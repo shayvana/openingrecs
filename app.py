@@ -46,17 +46,18 @@ def recommend_openings(user_openings, relatedness_network):
     for user_opening in normalized_user_openings:
         if user_opening in relatedness_network:
             for neighbor, edge_attrs in relatedness_network[user_opening].items():
-                weight = edge_attrs.get('weight', 1.0)  # Default weight to 1.0 if not present
+                weight = edge_attrs.get('weight', 1.0)
                 if neighbor not in normalized_user_openings:
                     recommendations[neighbor] += weight
-                    explanations[neighbor].append(f"Related to your opening: {user_opening} (weight: {weight})")
+                    explanations[neighbor].append(f"{user_opening} (weight: {weight})")
 
     sorted_recommendations = sorted(recommendations.items(), key=lambda x: x[1], reverse=True)
     top_result_explanation = None
     if sorted_recommendations:
         top_result, top_score = sorted_recommendations[0]
+        unique_explanations = list(dict.fromkeys(explanations[top_result]))
         top_result_explanation = (f"The top recommendation is {top_result} with a score of {top_score} because it is related to "
-                                  f"the openings you use frequently, such as {', '.join(explanations[top_result])}.")
+                                  f"the openings you use frequently, such as {', '.join(unique_explanations)}.")
     
     return sorted_recommendations[:10], top_result_explanation
 
@@ -74,12 +75,11 @@ def recommend():
         print(f"Extracted openings: {user_openings}")
         normalized_user_openings = [normalize_opening(o) for o in user_openings]
         print(f"Normalized user openings: {normalized_user_openings}")
-        
-        # Load the relatedness network
+
         try:
             with open('data/relatedness_network.pkl', 'rb') as f:
                 relatedness_network = pickle.load(f)
-            print(f"Relatedness network nodes: {list(relatedness_network.nodes())[:10]}")  # Print first 10 nodes as sample
+            print(f"Relatedness network nodes: {list(relatedness_network.nodes())[:10]}")
         except Exception as e:
             print(f"Error loading relatedness network: {e}")
             return jsonify({"error": "Failed to load the relatedness network."})
