@@ -1,0 +1,11 @@
+Flask
+Flask-Cors
+networkx
+numpy
+requests
+pandas
+scikit-learn
+scipy
+python-chess
+matplotlib
+tqdm

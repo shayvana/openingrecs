@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Opening Recommendations</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Chess Opening Recommendations</h1>
+    <form id="userForm">
+        <input type="text" id="username" placeholder="Enter your Lichess username">
+        <button type="submit">Get Recommendations</button>
+    </form>
+    <ul id="recommendations"></ul>
+    <p id="topExplanation"></p>
+    <script>
+        $(document).ready(function() {
+            $('#userForm').on('submit', function(e) {
+                e.preventDefault();
+                var username = $('#username').val();
+                $.ajax({
+                    url: '/recommend',
+                    type: 'POST',
+                    data: { username: username },
+                    success: function(data) {
+                        // Clear previous recommendations
+                        $('#recommendations').empty();
+                        $('#topExplanation').text('');
+
+                        if (data.error) {
+                            $('#topExplanation').text(data.error);
+                        } else {
+                            data.recommendations.forEach(function(rec) {
+                                $('#recommendations').append('<li>' + rec[0] + ' (Score: ' + rec[1] + ')</li>');
+                            });
+                            if (data.top_result_explanation) {
+                                $('#topExplanation').text(data.top_result_explanation);
+                            }
+                        }
+                    },
+                    error: function() {
+                        $('#topExplanation').text('An error occurred while processing the request.');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
