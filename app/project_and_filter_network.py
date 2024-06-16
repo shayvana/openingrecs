@@ -56,8 +56,12 @@ def build_filtered_relatedness_network(bipartite_network_path):
 
     for i in range(W_filtered.shape[0]):
         for j in range(W_filtered.shape[1]):
-            if W_filtered[i, j] > 0:
+            if W_filtered[i, j] > 0 and i != j:  # Ensure no self-loops
                 G.add_edge(openings[i], openings[j], weight=W_filtered[i, j])
+
+    # Keep only the largest connected component
+    largest_component = max(nx.connected_components(G), key=len)
+    G = G.subgraph(largest_component).copy()
 
     return G
 
