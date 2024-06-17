@@ -1,5 +1,5 @@
 ## Chess Opening Recommendations
-This project provides chess opening recommendations based on the games of a given Lichess user. It analyzes the user's games, extracts the openings played, and recommends similar openings using a graph-based relatedness network.
+This project provides chess opening recommendations based on the games of a given Lichess user. It analyzes the user's games, extracts the openings played, and recommends similar openings using a graph-based relatedness network described in [this research paper](https://www.nature.com/articles/s41598-023-31658-w#Abs1). The design doc for this project can be found [here](https://ttwpa.bearblog.dev/design-doc-for-chess-opening-recommendations/).
 
 ![image](https://github.com/shayvana/openingrecs/assets/19787070/a7890b6e-49fb-4668-ae99-5a27295197b3)
 
