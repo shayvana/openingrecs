@@ -6,7 +6,7 @@ import networkx as nx
 from flask import Flask, render_template, request, jsonify
 from collections import defaultdict
 
-app = Flask(__name__, template_folder='app/templates', static_folder='app/static')
+app = Flask(__name__, template_folder='templates', static_folder='static')
 
 def fetch_games(username, num_games=100):
     url = f'https://lichess.org/api/games/user/{username}'
@@ -16,7 +16,7 @@ def fetch_games(username, num_games=100):
     params = {
         'max': num_games,
         'opening': True,
-        'pgnInJson': True  # Ensures PGN data is in JSON format
+        'pgnInJson': True
     }
     response = requests.get(url, headers=headers, params=params)
     if response.status_code == 200:

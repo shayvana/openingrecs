@@ -1,0 +1,10 @@
+venv/
+data/lichess_db_standard_rated_2024-04.pgn.zst
+data/limited_lichess_games.pgn
+data/openings.txt
+app/download_data.py
+app/extract_pgn.py
+app/fetch_user_games.py
+app/visualize_bipartite_network.py
+app/visualize_relatedness_network.py
+test_networks.py
