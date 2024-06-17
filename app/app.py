@@ -5,6 +5,7 @@ import pickle
 import networkx as nx
 from flask import Flask, render_template, request, jsonify
 from collections import defaultdict
+import os
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
@@ -93,4 +94,5 @@ def recommend():
         return jsonify({"error": "Could not fetch games for the given username."})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001, host='0.0.0.0')
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, port=port, host='0.0.0.0')
