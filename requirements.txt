@@ -61,7 +61,7 @@ parso==0.8.4
 pexpect==4.9.0
 Pillow==10.0.0
 plumbum==1.8.2
-prompt-toolkit==3.0.43
+prompt-toolkit>=3.0.4,<3.0.37
 protobuf==4.25.3
 ptyprocess==0.7.0
 PuLP==2.8.0
