@@ -8,3 +8,4 @@ app/fetch_user_games.py
 app/visualize_bipartite_network.py
 app/visualize_relatedness_network.py
 test_networks.py
+app/__pycache__
