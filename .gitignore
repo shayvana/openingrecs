@@ -9,3 +9,5 @@ app/visualize_bipartite_network.py
 app/visualize_relatedness_network.py
 test_networks.py
 app/__pycache__
+.DS_Store
+data/.DS_Store
