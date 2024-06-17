@@ -18,7 +18,7 @@ def build_bipartite_network(pgn_file):
     B = nx.Graph()
 
     with open(pgn_file) as pgn:
-        for _ in tqdm(range(100000), desc="Reading and processing games"):
+        for _ in tqdm(range(1000000), desc="Reading and processing games"):
             game = chess.pgn.read_game(pgn)
             if game is None:
                 break

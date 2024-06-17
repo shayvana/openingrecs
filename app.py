@@ -49,7 +49,7 @@ def recommend_openings(user_openings, relatedness_network):
                 weight = edge_attrs.get('weight', 1.0)
                 if neighbor not in normalized_user_openings:
                     recommendations[neighbor] += weight
-                    explanations[neighbor].append(f"{user_opening} (weight: {weight})")
+                    explanations[neighbor].append(f"{user_opening}")
 
     sorted_recommendations = sorted(recommendations.items(), key=lambda x: x[1], reverse=True)
     top_result_explanation = None
