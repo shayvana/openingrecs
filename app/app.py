@@ -39,10 +39,9 @@ def get_recommendation_engine():
 
     if _recommendation_engine is None:
         try:
-            # Try new filename first
+            # Load network
             network_path = 'data/relatedness_network.pkl'
             if not os.path.exists(network_path):
-                # Fall back to old filename if it exists
                 logger.warning(f"Network not found at {network_path}")
                 return None
 
@@ -52,6 +51,40 @@ def get_recommendation_engine():
 
             logger.info(f"Loaded network: {_relatedness_network.number_of_nodes()} nodes, "
                        f"{_relatedness_network.number_of_edges()} edges")
+
+            # Calculate complexity scores based on network structure
+            # Use degree centrality as proxy: more connected = more complex
+            degrees = dict(_relatedness_network.degree())
+            if degrees:
+                max_degree = max(degrees.values())
+                min_degree = min(degrees.values())
+
+                for opening in _relatedness_network.nodes():
+                    degree = degrees.get(opening, 0)
+                    # Normalize to [0, 1] range
+                    if max_degree > min_degree:
+                        normalized = (degree - min_degree) / (max_degree - min_degree)
+                    else:
+                        normalized = 0.5
+
+                    # Map to more intuitive range [0.3, 1.0]
+                    # Less connected = simpler (0.3-0.5)
+                    # More connected = more complex (0.5-1.0)
+                    _relatedness_network.nodes[opening]['complexity'] = 0.3 + (normalized * 0.7)
+
+                logger.info(f"Calculated complexity scores based on network degree (range: {min_degree} - {max_degree} connections)")
+            else:
+                logger.warning("Could not calculate complexity scores from network")
+
+            # Load additional metadata if available
+            metadata_path = 'data/relatedness_network_metadata.pkl'
+            if os.path.exists(metadata_path):
+                logger.info(f"Loading network metadata from {metadata_path}")
+                with open(metadata_path, 'rb') as f:
+                    metadata = pickle.load(f)
+                logger.info(f"Loaded metadata with keys: {metadata.keys()}")
+            else:
+                logger.warning(f"Metadata file not found: {metadata_path}")
 
             # Create recommendation engine
             _recommendation_engine = RecommendationEngine(
@@ -226,20 +259,62 @@ def recommend():
                 "error": "Could not generate recommendations. Your openings may not be in the database."
             }), 400
 
-        # Format recommendations for response
+        # Calculate user complexity for comparison
+        user_complexity = engine.estimate_user_complexity(user_openings, user_rating)
+
+        # Format recommendations for response with detailed explanation cards
         formatted_recommendations = []
         for opening, score, explanation in recommendations:
-            # Get complexity if available
-            complexity = None
+            # Get opening data
+            opening_data = {}
             if opening in _relatedness_network.nodes:
-                complexity = _relatedness_network.nodes[opening].get('complexity')
+                node_data = _relatedness_network.nodes[opening]
+                complexity = node_data.get('complexity', 0.5)
 
-            formatted_recommendations.append({
-                'opening': opening,
-                'score': round(score, 3),
-                'explanation': explanation,
-                'complexity': round(complexity, 3) if complexity else None
-            })
+                # Calculate complexity level label
+                if complexity < 0.4:
+                    complexity_label = "Beginner-friendly"
+                elif complexity < 0.6:
+                    complexity_label = "Intermediate"
+                elif complexity < 0.8:
+                    complexity_label = "Advanced"
+                else:
+                    complexity_label = "Expert"
+
+                # Find related openings
+                related_openings = []
+                if opening in _relatedness_network:
+                    neighbors = list(_relatedness_network.neighbors(opening))[:3]
+                    related_openings = neighbors
+
+                # Calculate network connections
+                num_connections = _relatedness_network.degree(opening)
+
+                opening_data = {
+                    'opening': opening,
+                    'score': round(score, 3),
+                    'explanation': explanation,
+                    'complexity': round(complexity, 3),
+                    'complexity_label': complexity_label,
+                    'complexity_match': round(abs(complexity - user_complexity), 3),
+                    'is_good_match': bool(abs(complexity - user_complexity) < 0.2),
+                    'related_openings': related_openings,
+                    'num_connections': int(num_connections)
+                }
+            else:
+                opening_data = {
+                    'opening': opening,
+                    'score': round(score, 3),
+                    'explanation': explanation,
+                    'complexity': None,
+                    'complexity_label': 'Unknown',
+                    'complexity_match': None,
+                    'is_good_match': False,
+                    'related_openings': [],
+                    'num_connections': 0
+                }
+
+            formatted_recommendations.append(opening_data)
 
         # Get top explanation
         top_explanation = recommendations[0][2] if recommendations else "No recommendations available"
@@ -251,7 +326,14 @@ def recommend():
             'user_stats': {
                 'games_analyzed': len(user_openings),
                 'unique_openings': len(set(user_openings)),
-                'rating': user_rating
+                'rating': user_rating,
+                'complexity_level': round(user_complexity, 3),
+                'complexity_label': (
+                    "Beginner" if user_complexity < 0.4 else
+                    "Intermediate" if user_complexity < 0.6 else
+                    "Advanced" if user_complexity < 0.8 else
+                    "Expert"
+                )
             }
         }
 

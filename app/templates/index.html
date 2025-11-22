@@ -247,12 +247,12 @@
         }
 
         .opening-details {
-            display: flex;
-            gap: 2rem;
-            margin: 1rem 0;
-            padding: 1rem 0;
-            border-top: 1px solid rgba(92, 124, 250, 0.1);
-            border-bottom: 1px solid rgba(92, 124, 250, 0.1);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: rgba(92, 124, 250, 0.03);
         }
 
         .detail-item {
@@ -260,7 +260,7 @@
         }
 
         .detail-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #999;
             letter-spacing: 0.15em;
             text-transform: uppercase;
@@ -268,21 +268,80 @@
         }
 
         .detail-value {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
             color: rgba(92, 124, 250, 0.8);
         }
 
-        .complexity-high {
+        .complexity-expert {
             color: #c9485b;
         }
 
-        .complexity-medium {
+        .complexity-advanced {
             color: #d4a574;
         }
 
-        .complexity-low {
+        .complexity-intermediate {
+            color: rgba(92, 124, 250, 0.8);
+        }
+
+        .complexity-beginner {
             color: #7ba591;
+        }
+
+        .match-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.7rem;
+            border-radius: 20px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .match-good {
+            background: rgba(123, 165, 145, 0.2);
+            color: #7ba591;
+        }
+
+        .match-stretch {
+            background: rgba(212, 165, 116, 0.2);
+            color: #d4a574;
+        }
+
+        .related-openings {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(92, 124, 250, 0.1);
+        }
+
+        .related-title {
+            font-size: 0.75rem;
+            color: #999;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+        }
+
+        .related-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .related-tag {
+            padding: 0.4rem 0.8rem;
+            background: #fafafa;
+            border: 1px solid rgba(92, 124, 250, 0.15);
+            font-size: 0.8rem;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .related-tag:hover {
+            background: rgba(92, 124, 250, 0.05);
+            border-color: rgba(92, 124, 250, 0.3);
         }
 
         .opening-explanation {
@@ -405,6 +464,10 @@
                     <div class="stat-value" id="userRating">—</div>
                     <div class="stat-label">rating</div>
                 </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="userComplexity">—</div>
+                    <div class="stat-label">skill level</div>
+                </div>
             </div>
         </div>
 
@@ -458,6 +521,7 @@
                             $('#gamesAnalyzed').text(data.user_stats.games_analyzed || '—');
                             $('#uniqueOpenings').text(data.user_stats.unique_openings || '—');
                             $('#userRating').text(data.user_stats.rating || 'unrated');
+                            $('#userComplexity').text(data.user_stats.complexity_label || '—');
                             $('#userStats').show();
                         }
 
@@ -469,18 +533,29 @@
                         // Display recommendations
                         if (data.recommendations && data.recommendations.length > 0) {
                             data.recommendations.forEach(function(rec, index) {
-                                var complexityClass = '';
-                                var complexityText = 'n/a';
+                                var complexityClass = 'complexity-' + (rec.complexity_label || 'intermediate').toLowerCase().replace('-', '');
+                                var complexityText = rec.complexity ? rec.complexity.toFixed(2) : 'n/a';
+                                var complexityLabel = rec.complexity_label || 'Unknown';
 
-                                if (rec.complexity) {
-                                    complexityText = rec.complexity.toFixed(2);
-                                    if (rec.complexity >= 1.5) {
-                                        complexityClass = 'complexity-high';
-                                    } else if (rec.complexity >= 1.0) {
-                                        complexityClass = 'complexity-medium';
-                                    } else {
-                                        complexityClass = 'complexity-low';
-                                    }
+                                // Match badge
+                                var matchBadge = '';
+                                if (rec.is_good_match) {
+                                    matchBadge = '<span class="match-badge match-good">Good Match</span>';
+                                } else if (rec.complexity_match !== null && rec.complexity_match < 0.3) {
+                                    matchBadge = '<span class="match-badge match-stretch">Stretch Goal</span>';
+                                }
+
+                                // Related openings
+                                var relatedHtml = '';
+                                if (rec.related_openings && rec.related_openings.length > 0) {
+                                    relatedHtml = `
+                                        <div class="related-openings">
+                                            <div class="related-title">similar openings in network</div>
+                                            <div class="related-list">
+                                                ${rec.related_openings.map(o => '<span class="related-tag">' + o + '</span>').join('')}
+                                            </div>
+                                        </div>
+                                    `;
                                 }
 
                                 var listItem = $('<li>').addClass('recommendation-item').html(`
@@ -492,9 +567,17 @@
                                         <div class="detail-item">
                                             <div class="detail-label">complexity</div>
                                             <div class="detail-value ${complexityClass}">${complexityText}</div>
+                                            <div class="stat-label" style="margin-top: 0.5rem;">${complexityLabel}</div>
+                                            ${matchBadge}
+                                        </div>
+                                        <div class="detail-item">
+                                            <div class="detail-label">network</div>
+                                            <div class="detail-value">${rec.num_connections || 0}</div>
+                                            <div class="stat-label" style="margin-top: 0.5rem;">connections</div>
                                         </div>
                                     </div>
                                     ${rec.explanation ? '<div class="opening-explanation">' + rec.explanation + '</div>' : ''}
+                                    ${relatedHtml}
                                 `);
 
                                 $('#recommendations').append(listItem);
