@@ -3,10 +3,7 @@
   "builds": [
     {
       "src": "app/app.py",
-      "use": "@vercel/python",
-      "config": {
-        "requirementsFile": "requirements-production.txt"
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [

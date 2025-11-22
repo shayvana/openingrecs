@@ -1,0 +1,27 @@
+# Core web framework
+Flask==3.0.0
+Werkzeug==3.0.1
+requests==2.31.0
+
+# Data processing and analysis
+numpy==1.26.2
+pandas==2.1.4
+scipy==1.11.4
+
+# Network analysis
+networkx==3.2.1
+
+# Bipartite Configuration Model for network filtering
+bicm==3.1.1
+
+# Chess library
+python-chess==1.999
+
+# Progress bars
+tqdm==4.66.1
+
+# Production server
+gunicorn==21.2.0
+
+# CORS support (if needed for API)
+Flask-Cors==4.0.0
