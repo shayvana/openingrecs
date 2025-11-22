@@ -1,0 +1,16 @@
+# Production dependencies for Vercel deployment
+# Only includes packages needed at runtime (not for building networks)
+
+# Web framework
+Flask==3.0.0
+Werkzeug==3.0.1
+Flask-Cors==4.0.0
+
+# Network analysis (lighter weight than full scipy stack)
+networkx==3.2.1
+
+# Data processing (minimal)
+numpy==1.26.2
+
+# HTTP requests
+requests==2.31.0
