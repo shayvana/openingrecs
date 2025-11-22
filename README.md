@@ -113,6 +113,8 @@ chessopeningrecs/
 
 - **[DEPLOYMENT.md](DEPLOYMENT.md)**: Complete Vercel deployment guide
 - **[DATA_STATUS.md](DATA_STATUS.md)**: Data freshness and update guide
+- **[COMPLEXITY_METRIC.md](COMPLEXITY_METRIC.md)**: Explanation of our complexity scoring approach
+- **[/methodology](app/templates/methodology.html)**: In-app methodology page (accessible at `/methodology`)
 
 ## Methodology
 
@@ -120,13 +122,16 @@ Based on: [Prata et al. (2023) - Nature Scientific Reports](https://www.nature.c
 
 **Key implementations:**
 1. ✅ Z-score filtering (threshold: 2.0)
-2. ✅ Economic Fitness & Complexity algorithm
-3. ✅ Bipartite network projection
-4. ✅ No artificial component connections
-5. ✅ Player rating weighting
-6. ✅ Opening complexity metrics
+2. ✅ Bipartite network projection
+3. ✅ No artificial component connections
+4. ✅ Player rating weighting
+5. ✅ **Degree-based complexity** (adapted from EFC - see [COMPLEXITY_METRIC.md](COMPLEXITY_METRIC.md))
+
+**Note on complexity:** We use network degree centrality instead of raw EFC scores because EFC measures "rarity" (rare openings = high score), which is backwards for chess where popular openings often have deeper theory. Our approach: more connections in filtered network = higher complexity.
 
 **Validation:** 15/19 tests passing (79%) - all critical methodology tests ✓
+
+For complete details, see [/methodology](/methodology) page.
 
 ## Data
 

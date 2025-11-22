@@ -206,6 +206,12 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/methodology')
+def methodology():
+    """Render methodology page."""
+    return render_template('methodology.html')
+
+
 @app.route('/recommend', methods=['POST'])
 def recommend():
     """

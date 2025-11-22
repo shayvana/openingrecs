@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>methodology · opening theory · serialexperiment.ing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Lora', Georgia, serif;
+            background: #ffffff;
+            color: #333;
+            min-height: 100vh;
+            line-height: 1.8;
+        }
+
+        .header {
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(92, 124, 250, 0.2);
+        }
+
+        .site-title {
+            font-size: 1rem;
+            letter-spacing: 0.3em;
+            color: rgba(92, 124, 250, 0.7);
+            font-weight: 400;
+            text-transform: lowercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .site-title a {
+            color: inherit;
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+
+        .site-title a:hover {
+            opacity: 0.6;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #333;
+            letter-spacing: 0.05em;
+            margin-top: 1rem;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 0.5rem;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-link {
+            display: inline-block;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            color: rgba(92, 124, 250, 0.7);
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+
+        .nav-link:hover {
+            opacity: 0.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .section {
+            margin-bottom: 4rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: rgba(92, 124, 250, 0.8);
+            letter-spacing: 0.05em;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid rgba(92, 124, 250, 0.2);
+            padding-bottom: 0.5rem;
+        }
+
+        .subsection {
+            margin: 2rem 0;
+        }
+
+        .subsection-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: #555;
+        }
+
+        .highlight-box {
+            background: rgba(92, 124, 250, 0.05);
+            border-left: 3px solid rgba(92, 124, 250, 0.7);
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .highlight-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .code-block {
+            background: #fafafa;
+            border: 1px solid rgba(92, 124, 250, 0.2);
+            padding: 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            line-height: 1.6;
+        }
+
+        .formula {
+            font-style: italic;
+            color: rgba(92, 124, 250, 0.9);
+            font-size: 1.1rem;
+            text-align: center;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        ul {
+            margin: 1rem 0 1rem 2rem;
+            color: #555;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .metric-item {
+            background: #fafafa;
+            border: 1px solid rgba(92, 124, 250, 0.15);
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: rgba(92, 124, 250, 0.8);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #666;
+            letter-spacing: 0.1em;
+            text-transform: lowercase;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(92, 124, 250, 0.1);
+        }
+
+        .comparison-table th {
+            background: rgba(92, 124, 250, 0.05);
+            font-weight: 600;
+            color: rgba(92, 124, 250, 0.9);
+            letter-spacing: 0.05em;
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(92, 124, 250, 0.02);
+        }
+
+        .complexity-range {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0.25rem;
+        }
+
+        .range-beginner {
+            background: rgba(123, 165, 145, 0.2);
+            color: #7ba591;
+        }
+
+        .range-intermediate {
+            background: rgba(92, 124, 250, 0.2);
+            color: rgba(92, 124, 250, 0.9);
+        }
+
+        .range-advanced {
+            background: rgba(212, 165, 116, 0.2);
+            color: #d4a574;
+        }
+
+        .range-expert {
+            background: rgba(201, 72, 91, 0.2);
+            color: #c9485b;
+        }
+
+        .reference-link {
+            color: rgba(92, 124, 250, 0.7);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(92, 124, 250, 0.3);
+            transition: all 0.3s;
+        }
+
+        .reference-link:hover {
+            color: rgba(92, 124, 250, 0.9);
+            border-bottom-color: rgba(92, 124, 250, 0.7);
+        }
+
+        .footer {
+            margin-top: 5rem;
+            padding: 3rem 0;
+            text-align: center;
+            border-top: 1px solid rgba(92, 124, 250, 0.2);
+            color: #999;
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: rgba(92, 124, 250, 0.7);
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+
+        .footer a:hover {
+            opacity: 0.6;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 2rem 1rem;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .section-title {
+                font-size: 1.2rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-table {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="site-title">
+            <a href="https://www.serialexperiment.ing/">serialexperiment.ing</a> · opening theory
+        </div>
+        <h1 class="page-title">methodology</h1>
+        <p class="subtitle">how we quantify opening complexity & generate recommendations</p>
+        <a href="/" class="nav-link">← back to recommendations</a>
+    </div>
+
+    <div class="container">
+        <!-- Overview -->
+        <div class="section">
+            <div class="highlight-box">
+                <p><strong>This application combines peer-reviewed network science with chess-specific adaptations to provide personalized opening recommendations.</strong></p>
+                <p>We implement the methodology from <em>"Quantifying the Complexity and Similarity of Chess Openings Using Online Chess Community Data"</em> (Nature Scientific Reports, 2023) with one critical modification: our complexity metric uses network topology rather than rarity-based scoring.</p>
+            </div>
+        </div>
+
+        <!-- The Research Foundation -->
+        <div class="section">
+            <h2 class="section-title">i. the research foundation</h2>
+
+            <div class="subsection">
+                <h3 class="subsection-title">the nature paper</h3>
+                <p>Our methodology builds on research by <a href="https://www.nature.com/articles/s41598-023-31658-w" target="_blank" class="reference-link">Prata et al. (2023)</a>, which pioneered the application of economic complexity algorithms to chess openings. The paper introduced three key concepts:</p>
+                <ul>
+                    <li><strong>Bipartite network construction</strong> - Players connected to openings they play</li>
+                    <li><strong>Statistical filtering via z-scores</strong> - Removing noise using null models</li>
+                    <li><strong>Economic Fitness & Complexity (EFC)</strong> - Iterative algorithm from economic trade analysis</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">our dataset</h3>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-value">1.3M</div>
+                        <div class="metric-label">games analyzed</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">373K</div>
+                        <div class="metric-label">unique players</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">144</div>
+                        <div class="metric-label">opening categories</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">1,654</div>
+                        <div class="metric-label">filtered connections</div>
+                    </div>
+                </div>
+                <p>Source: <a href="https://database.lichess.org/" target="_blank" class="reference-link">Lichess Open Database</a> (June 2024)</p>
+            </div>
+        </div>
+
+        <!-- Network Construction -->
+        <div class="section">
+            <h2 class="section-title">ii. bipartite network construction</h2>
+
+            <p>We begin by building a two-mode network connecting players to the openings they employ:</p>
+
+            <div class="code-block">
+Players (373,460)  ←──→  Openings (144)
+     │                         │
+     │                         │
+   Each player      Each opening appears
+   plays 3.5        in ~9,090 games
+   openings         (median: 1,580)
+   (median: 2)
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">edge weighting</h3>
+                <p>Connections between players and openings are binary (played/not played) rather than frequency-weighted. This follows the paper's methodology and prevents high-volume players from dominating the network structure.</p>
+            </div>
+        </div>
+
+        <!-- Statistical Filtering -->
+        <div class="section">
+            <h2 class="section-title">iii. z-score filtering with bicm</h2>
+
+            <p>Not all player-opening connections are meaningful. We use the <strong>Bipartite Configuration Model (BiCM)</strong> to identify statistically significant relationships:</p>
+
+            <div class="formula">
+                z = (observed - expected) / standard_deviation
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">the filtering process</h3>
+                <ol style="margin-left: 2rem;">
+                    <li>Calculate expected co-occurrence probability for each opening pair</li>
+                    <li>Compare actual co-occurrence to expected under null model</li>
+                    <li>Compute z-score for statistical significance</li>
+                    <li>Retain only edges where <strong>z > 2.0</strong> (approximately p < 0.05)</li>
+                </ol>
+
+                <div class="highlight-box">
+                    <p><strong>Result:</strong> We retain <strong>19.68%</strong> of possible opening connections, representing statistically validated strategic relationships rather than random co-occurrence.</p>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">methodological compliance</h3>
+                <p>Following the Nature paper, we do <em>not</em> artificially connect disconnected components. The filtered network contains multiple components, reflecting genuine strategic families of openings.</p>
+            </div>
+        </div>
+
+        <!-- Complexity Metric (Our Modification) -->
+        <div class="section">
+            <h2 class="section-title">iv. complexity quantification</h2>
+
+            <div class="highlight-box" style="background: rgba(212, 165, 116, 0.1); border-left-color: #d4a574;">
+                <p><strong>⚠ Critical Deviation from Research Paper</strong></p>
+                <p>The original paper uses the Economic Fitness & Complexity (EFC) algorithm. We found this produces counterintuitive results for chess and developed an alternative metric.</p>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">the efc problem</h3>
+                <p>The EFC algorithm, adapted from economic trade networks, measures <em>rarity</em> rather than chess complexity:</p>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Opening</th>
+                            <th>Players</th>
+                            <th>EFC Score</th>
+                            <th>Chess Reality</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Sicilian Defense</td>
+                            <td>99,975</td>
+                            <td>≈ 0.000</td>
+                            <td>Extremely complex, deep theory</td>
+                        </tr>
+                        <tr>
+                            <td>Queen's Pawn, Mengarini Attack</td>
+                            <td>2</td>
+                            <td>144.000</td>
+                            <td>Obscure, limited theory</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p>In economics, rare exports indicate sophisticated production (diamonds vs wheat). In chess, popular openings often have the deepest theoretical development.</p>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">our solution: network degree centrality</h3>
+                <p>We calculate complexity based on connections in the <em>filtered</em> relatedness network:</p>
+
+                <div class="formula">
+                    complexity = 0.3 + (normalized_degree × 0.7)
+                </div>
+
+                <p><strong>Interpretation:</strong> Openings with more statistically significant connections to other openings demonstrate:</p>
+                <ul>
+                    <li>Transferable strategic patterns</li>
+                    <li>Positional depth requiring broader understanding</li>
+                    <li>Integration into larger strategic systems</li>
+                </ul>
+
+                <div class="code-block">
+Range    Label              Connections   Examples
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+0.3-0.4  Beginner-friendly  3-10         Rapport-Jobava System
+0.4-0.6  Intermediate       10-30        Horwitz Defense
+0.6-0.8  Advanced           30-50        English Opening
+0.8-1.0  Expert             50-63        Benoni Defense
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">validation</h3>
+                <p>This metric produces intuitive results that align with established chess theory:</p>
+                <ul>
+                    <li><strong>Benoni Defense</strong> (63 connections) → 1.0 complexity ✓</li>
+                    <li><strong>King's Indian Defense</strong> (49 connections) → 0.84 complexity ✓</li>
+                    <li><strong>Mengarini Attack</strong> (3 connections) → 0.3 complexity ✓</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recommendation Engine -->
+        <div class="section">
+            <h2 class="section-title">v. personalized recommendations</h2>
+
+            <p>Our recommendation system combines four weighted factors to suggest appropriate openings for each player:</p>
+
+            <div class="subsection">
+                <h3 class="subsection-title">multi-factor scoring</h3>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Factor</th>
+                            <th>Weight</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Similarity</td>
+                            <td>40%</td>
+                            <td>Proximity to user's current openings in filtered network</td>
+                        </tr>
+                        <tr>
+                            <td>Complexity</td>
+                            <td>30%</td>
+                            <td>Match to user's skill level (with slight stretch factor)</td>
+                        </tr>
+                        <tr>
+                            <td>Popularity</td>
+                            <td>20%</td>
+                            <td>Opening adoption rate and player diversity</td>
+                        </tr>
+                        <tr>
+                            <td>Novelty</td>
+                            <td>10%</td>
+                            <td>Distance from user's existing repertoire</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">user complexity estimation</h3>
+                <p>We estimate a user's skill level through two methods:</p>
+                <ul>
+                    <li><strong>Median complexity of current openings</strong> - If available in our network</li>
+                    <li><strong>Rating-based approximation</strong> - Using formula: (rating - 1000) / 1000</li>
+                </ul>
+                <p>Recommendations target openings slightly above the user's level (growth zone), with "good match" badges indicating optimal challenge level.</p>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">explanation generation</h3>
+                <p>Each recommendation includes:</p>
+                <ul>
+                    <li>Similar openings from user's repertoire</li>
+                    <li>Complexity appropriateness assessment</li>
+                    <li>Network relationships (3 related openings)</li>
+                    <li>Connection count (network integration)</li>
+                    <li>Match quality badge (good match vs stretch goal)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Technical Implementation -->
+        <div class="section">
+            <h2 class="section-title">vi. technical implementation</h2>
+
+            <div class="subsection">
+                <h3 class="subsection-title">core algorithms</h3>
+                <ul>
+                    <li><strong>BiCM</strong> - Using <code>bicm 3.1.1</code> library for null model calculations</li>
+                    <li><strong>Network analysis</strong> - NetworkX 3.2.1 for graph operations</li>
+                    <li><strong>Statistical processing</strong> - NumPy, SciPy for numerical computations</li>
+                    <li><strong>Chess parsing</strong> - python-chess 1.999 for PGN processing</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">data pipeline</h3>
+                <ol style="margin-left: 2rem;">
+                    <li>Download Lichess database (1.3M games, ~20GB compressed)</li>
+                    <li>Extract player-opening pairs from PGN files</li>
+                    <li>Build bipartite network (373K players × 144 openings)</li>
+                    <li>Apply z-score filtering (BiCM null model)</li>
+                    <li>Project to opening similarity network (144 nodes, 1,654 edges)</li>
+                    <li>Calculate degree-based complexity scores</li>
+                    <li>Serialize networks for fast serving (pickle format)</li>
+                </ol>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">serving infrastructure</h3>
+                <p>The application runs as a Flask web service:</p>
+                <ul>
+                    <li><strong>Backend</strong> - Python 3.9+ with Flask 3.0.0</li>
+                    <li><strong>Deployment</strong> - Vercel serverless functions</li>
+                    <li><strong>Caching</strong> - Network loaded once at startup</li>
+                    <li><strong>Response time</strong> - ~2-5 seconds (Lichess API fetch + calculation)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Future Directions -->
+        <div class="section">
+            <h2 class="section-title">vii. limitations & future work</h2>
+
+            <div class="subsection">
+                <h3 class="subsection-title">current limitations</h3>
+                <ul>
+                    <li><strong>Data staleness</strong> - Network built from June 2024 data</li>
+                    <li><strong>Rating-blind filtering</strong> - Z-score calculation doesn't weight by player strength</li>
+                    <li><strong>Binary edges</strong> - No frequency weighting in bipartite network</li>
+                    <li><strong>Static analysis</strong> - No temporal evolution of opening popularity</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">potential enhancements</h3>
+                <ul>
+                    <li>Rating-stratified complexity scores (beginner vs master networks)</li>
+                    <li>Temporal analysis of opening meta evolution</li>
+                    <li>Learning curve prediction based on community data</li>
+                    <li>Position-type profiling (tactical vs positional preferences)</li>
+                    <li>Opponent-specific counter-recommendations</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- References -->
+        <div class="section">
+            <h2 class="section-title">viii. references & resources</h2>
+
+            <div class="subsection">
+                <h3 class="subsection-title">primary research</h3>
+                <ul>
+                    <li>Prata, D.N., et al. (2023). <a href="https://www.nature.com/articles/s41598-023-31658-w" target="_blank" class="reference-link">Quantifying the Complexity and Similarity of Chess Openings Using Online Chess Community Data</a>. <em>Scientific Reports</em>, 13, 6
+555.</li>
+                    <li>Tacchella, A., et al. (2012). A New Metrics for Countries' Fitness and Products' Complexity. <em>Scientific Reports</em>, 2, 723.</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">data sources</h3>
+                <ul>
+                    <li><a href="https://database.lichess.org/" target="_blank" class="reference-link">Lichess Open Database</a> - Open chess game data</li>
+                    <li><a href="https://lichess.org/api" target="_blank" class="reference-link">Lichess API</a> - Real-time user game fetching</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">implementation</h3>
+                <ul>
+                    <li><a href="https://github.com/mat701/BiCM" target="_blank" class="reference-link">BiCM Library</a> - Bipartite Configuration Model implementation</li>
+                    <li><a href="https://networkx.org/" target="_blank" class="reference-link">NetworkX</a> - Graph analysis in Python</li>
+                    <li><a href="https://python-chess.readthedocs.io/" target="_blank" class="reference-link">python-chess</a> - Chess library for PGN parsing</li>
+                </ul>
+            </div>
+
+            <div class="subsection">
+                <h3 class="subsection-title">project documentation</h3>
+                <ul>
+                    <li><a href="https://github.com/shayvana/chessopeningrecs" target="_blank" class="reference-link">GitHub Repository</a> - Source code and tests</li>
+                    <li><code>COMPLEXITY_METRIC.md</code> - Detailed explanation of our complexity approach</li>
+                    <li><code>tests/methodology/test_paper_compliance.py</code> - Methodology validation suite</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>
+                built by <a href="https://www.serialexperiment.ing/" target="_blank">serialexperiment.ing</a>
+            </p>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem; font-style: italic;">
+                "all persistence comes from love"
+            </p>
+        </div>
+    </div>
+</body>
+</html>
