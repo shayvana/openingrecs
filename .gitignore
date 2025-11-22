@@ -1,13 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
 venv/
-data/lichess_db_standard_rated_2024-04.pgn.zst
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+data/.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+/tmp/
+
+# Backup files
+*.old
+*.bak
+*_backup.*
+
+# Local data (keep fresh/temp files out of git)
+data/*_fresh.pkl
+data/*_old.pkl
+data/*_backup.pkl
+data/lichess_*.pgn
+data/lichess_db_*.zst
 data/limited_lichess_games.pgn
 data/openings.txt
+
+# Exclude bipartite network (50 MB - too large, only needed for rebuilding)
+data/bipartite_network.pkl
+data/bipartite_network_*.pkl
+
+# Exclude metadata file (11 MB - not loaded by app, data is in network as node attributes)
+data/*_metadata.pkl
+
+# Old/deprecated files
 app/download_data.py
 app/extract_pgn.py
-app/fetch_user_games.py
 app/visualize_bipartite_network.py
 app/visualize_relatedness_network.py
 test_networks.py
-app/__pycache__
-.DS_Store
-data/.DS_Store
+
+# Vercel
+.vercel

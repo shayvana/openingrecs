@@ -1,5 +1,5 @@
-from flask import Flask
+"""
+Chess Opening Recommendations App Package
+"""
 
-app = Flask(__name__)
-
-from app import main
+__version__ = '2.0.0'

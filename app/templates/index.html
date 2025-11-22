@@ -3,44 +3,515 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess Opening Recommendations</title>
+    <title>opening theory · serialexperiment.ing</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Lora', Georgia, serif;
+            background: #ffffff;
+            color: #333;
+            min-height: 100vh;
+            line-height: 1.8;
+        }
+
+        .header {
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(92, 124, 250, 0.2);
+        }
+
+        .site-title {
+            font-size: 1rem;
+            letter-spacing: 0.3em;
+            color: rgba(92, 124, 250, 0.7);
+            font-weight: 400;
+            text-transform: lowercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .site-title a {
+            color: inherit;
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+
+        .site-title a:hover {
+            opacity: 0.6;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #333;
+            letter-spacing: 0.05em;
+            margin-top: 1rem;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 0.5rem;
+            letter-spacing: 0.05em;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .intro-text {
+            text-align: center;
+            font-size: 1rem;
+            color: #555;
+            margin-bottom: 3rem;
+            line-height: 2;
+            font-style: italic;
+        }
+
+        .form-container {
+            margin-bottom: 4rem;
+        }
+
+        #userForm {
+            display: flex;
+            gap: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            flex-direction: column;
+        }
+
+        #username {
+            padding: 1rem;
+            border: 1px solid rgba(92, 124, 250, 0.3);
+            border-radius: 0;
+            font-size: 1rem;
+            font-family: 'Lora', Georgia, serif;
+            background: #fafafa;
+            transition: all 0.3s;
+            letter-spacing: 0.05em;
+        }
+
+        #username:focus {
+            outline: none;
+            border-color: rgba(92, 124, 250, 0.7);
+            background: #ffffff;
+        }
+
+        button[type="submit"] {
+            padding: 1rem 2rem;
+            background: rgba(92, 124, 250, 0.7);
+            color: white;
+            border: none;
+            font-size: 1rem;
+            font-family: 'Lora', Georgia, serif;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: lowercase;
+        }
+
+        button[type="submit"]:hover {
+            background: rgba(92, 124, 250, 0.9);
+        }
+
+        button[type="submit"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            color: rgba(92, 124, 250, 0.7);
+            font-size: 1rem;
+            margin: 2rem 0;
+            display: none;
+            font-style: italic;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid rgba(92, 124, 250, 0.7);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .user-stats {
+            background: #fafafa;
+            border: 1px solid rgba(92, 124, 250, 0.2);
+            padding: 2rem;
+            margin-bottom: 3rem;
+            display: none;
+        }
+
+        .user-stats h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.1em;
+            text-transform: lowercase;
+            color: rgba(92, 124, 250, 0.7);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 2rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: rgba(92, 124, 250, 0.8);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #666;
+            letter-spacing: 0.1em;
+            text-transform: lowercase;
+        }
+
+        .explanation {
+            background: rgba(92, 124, 250, 0.05);
+            border-left: 3px solid rgba(92, 124, 250, 0.7);
+            padding: 1.5rem;
+            margin-bottom: 3rem;
+            color: #555;
+            font-style: italic;
+            display: none;
+            line-height: 1.8;
+        }
+
+        #recommendations {
+            list-style: none;
+        }
+
+        .recommendation-item {
+            background: #fafafa;
+            border: 1px solid rgba(92, 124, 250, 0.15);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .recommendation-item:hover {
+            border-color: rgba(92, 124, 250, 0.4);
+            background: #ffffff;
+        }
+
+        .opening-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .opening-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            letter-spacing: 0.02em;
+        }
+
+        .opening-score {
+            font-size: 0.9rem;
+            color: rgba(92, 124, 250, 0.7);
+            letter-spacing: 0.1em;
+            font-style: italic;
+        }
+
+        .opening-details {
+            display: flex;
+            gap: 2rem;
+            margin: 1rem 0;
+            padding: 1rem 0;
+            border-top: 1px solid rgba(92, 124, 250, 0.1);
+            border-bottom: 1px solid rgba(92, 124, 250, 0.1);
+        }
+
+        .detail-item {
+            text-align: center;
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            color: #999;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: rgba(92, 124, 250, 0.8);
+        }
+
+        .complexity-high {
+            color: #c9485b;
+        }
+
+        .complexity-medium {
+            color: #d4a574;
+        }
+
+        .complexity-low {
+            color: #7ba591;
+        }
+
+        .opening-explanation {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            margin-top: 1rem;
+            font-style: italic;
+        }
+
+        .error {
+            background: rgba(201, 72, 91, 0.1);
+            border-left: 3px solid #c9485b;
+            color: #c9485b;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: none;
+            font-style: italic;
+        }
+
+        .footer {
+            margin-top: 5rem;
+            padding: 3rem 0;
+            text-align: center;
+            border-top: 1px solid rgba(92, 124, 250, 0.2);
+            color: #999;
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: rgba(92, 124, 250, 0.7);
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+
+        .footer a:hover {
+            opacity: 0.6;
+        }
+
+        .methodology {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            font-style: italic;
+            letter-spacing: 0.05em;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 2rem 1rem;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .opening-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            #userForm {
+                gap: 0.75rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Chess Opening Recommendations</h1>
-    <form id="userForm">
-        <input type="text" id="username" placeholder="Enter your Lichess username">
-        <button type="submit">Get Recommendations</button>
-    </form>
-    <ul id="recommendations"></ul>
-    <p id="topExplanation"></p>
+    <div class="header">
+        <div class="site-title">
+            <a href="https://www.serialexperiment.ing/">serialexperiment.ing</a> · opening theory
+        </div>
+        <h1 class="page-title">chess opening recommendations</h1>
+        <p class="subtitle">personalized repertoire discovery through network analysis</p>
+    </div>
+
+    <div class="container">
+        <p class="intro-text">
+            enter your lichess username to receive opening recommendations<br>
+            based on economic fitness & complexity analysis
+        </p>
+
+        <div class="form-container">
+            <form id="userForm">
+                <input
+                    type="text"
+                    id="username"
+                    placeholder="lichess username"
+                    required
+                    autocomplete="off"
+                >
+                <button type="submit" id="submitBtn">discover openings</button>
+            </form>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>analyzing your games...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="user-stats" id="userStats">
+            <h3>your repertoire</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="gamesAnalyzed">—</div>
+                    <div class="stat-label">games analyzed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="uniqueOpenings">—</div>
+                    <div class="stat-label">unique openings</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="userRating">—</div>
+                    <div class="stat-label">rating</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="explanation" id="topExplanation"></div>
+
+        <ul id="recommendations"></ul>
+
+        <div class="footer">
+            <p>
+                methodology: <a href="https://www.nature.com/articles/s41598-023-31658-w" target="_blank">nature scientific reports</a> ·
+                economic fitness & complexity algorithm
+            </p>
+            <p class="methodology">
+                z-score filtering · bipartite network projection · opening complexity analysis
+            </p>
+        </div>
+    </div>
+
     <script>
         $(document).ready(function() {
             $('#userForm').on('submit', function(e) {
                 e.preventDefault();
-                var username = $('#username').val();
+
+                var username = $('#username').val().trim();
+                if (!username) return;
+
+                // Reset UI
+                $('#recommendations').empty();
+                $('#topExplanation').hide().text('');
+                $('#error').hide().text('');
+                $('#userStats').hide();
+                $('#loading').show();
+                $('#submitBtn').prop('disabled', true);
+
+                // Make request
                 $.ajax({
                     url: '/recommend',
                     type: 'POST',
                     data: { username: username },
                     success: function(data) {
-                        // Clear previous recommendations
-                        $('#recommendations').empty();
-                        $('#topExplanation').text('');
+                        $('#loading').hide();
+                        $('#submitBtn').prop('disabled', false);
 
                         if (data.error) {
-                            $('#topExplanation').text(data.error);
-                        } else {
-                            data.recommendations.forEach(function(rec) {
-                                $('#recommendations').append('<li>' + rec[0] + ' (Score: ' + rec[1] + ')</li>');
+                            $('#error').text(data.error).show();
+                            return;
+                        }
+
+                        // Display user stats
+                        if (data.user_stats) {
+                            $('#gamesAnalyzed').text(data.user_stats.games_analyzed || '—');
+                            $('#uniqueOpenings').text(data.user_stats.unique_openings || '—');
+                            $('#userRating').text(data.user_stats.rating || 'unrated');
+                            $('#userStats').show();
+                        }
+
+                        // Display top explanation
+                        if (data.top_result_explanation) {
+                            $('#topExplanation').text(data.top_result_explanation).show();
+                        }
+
+                        // Display recommendations
+                        if (data.recommendations && data.recommendations.length > 0) {
+                            data.recommendations.forEach(function(rec, index) {
+                                var complexityClass = '';
+                                var complexityText = 'n/a';
+
+                                if (rec.complexity) {
+                                    complexityText = rec.complexity.toFixed(2);
+                                    if (rec.complexity >= 1.5) {
+                                        complexityClass = 'complexity-high';
+                                    } else if (rec.complexity >= 1.0) {
+                                        complexityClass = 'complexity-medium';
+                                    } else {
+                                        complexityClass = 'complexity-low';
+                                    }
+                                }
+
+                                var listItem = $('<li>').addClass('recommendation-item').html(`
+                                    <div class="opening-header">
+                                        <div class="opening-name">${index + 1}. ${rec.opening}</div>
+                                        <div class="opening-score">score: ${rec.score.toFixed(3)}</div>
+                                    </div>
+                                    <div class="opening-details">
+                                        <div class="detail-item">
+                                            <div class="detail-label">complexity</div>
+                                            <div class="detail-value ${complexityClass}">${complexityText}</div>
+                                        </div>
+                                    </div>
+                                    ${rec.explanation ? '<div class="opening-explanation">' + rec.explanation + '</div>' : ''}
+                                `);
+
+                                $('#recommendations').append(listItem);
                             });
-                            if (data.top_result_explanation) {
-                                $('#topExplanation').text(data.top_result_explanation);
-                            }
+                        } else {
+                            $('#error').text('no recommendations available · try playing more games').show();
                         }
                     },
-                    error: function() {
-                        $('#topExplanation').text('An error occurred while processing the request.');
+                    error: function(xhr) {
+                        $('#loading').hide();
+                        $('#submitBtn').prop('disabled', false);
+
+                        var errorMsg = 'an error occurred processing your request';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        }
+                        $('#error').text(errorMsg).show();
                     }
                 });
             });

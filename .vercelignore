@@ -1,0 +1,44 @@
+# Exclude large files not needed in production
+data/bipartite_network.pkl
+data/bipartite_network_june2024.pkl
+data/bipartite_network_old.pkl
+data/*_fresh.pkl
+data/*.pgn
+
+# Exclude old/backup files
+app/*.py.old
+*.bak
+
+# Exclude test files
+tests/
+test_*.py
+
+# Exclude development scripts
+scripts/
+
+# Exclude documentation (keep only README)
+*.md
+!README.md
+!DEPLOYMENT.md
+!DATA_STATUS.md
+
+# Exclude Git and Python cache
+.git/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Exclude development tools
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
