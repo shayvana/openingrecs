@@ -280,6 +280,7 @@ def extract_openings_and_rating_chesscom(games_data, username):
             # Extract opening from ECO URL
             # Chess.com stores openings in 'eco' field as URLs like:
             # "https://www.chess.com/openings/Sicilian-Defense-..."
+            # Note: Older games may have "Undefined" which we skip
             if 'eco' in game and isinstance(game['eco'], str):
                 eco_url = game['eco']
                 # Extract opening name from URL
@@ -289,7 +290,8 @@ def extract_openings_and_rating_chesscom(games_data, username):
                     opening_name = opening_slug.replace('-', ' ')
                     # Remove any trailing segments after numbers or extra details
                     opening_name = opening_name.split('?')[0].strip()
-                    if opening_name:
+                    # Skip undefined/unknown openings (common in older Chess.com games)
+                    if opening_name and opening_name.lower() not in ['undefined', 'unknown']:
                         openings.append(opening_name)
 
             # Extract rating for this user
@@ -386,7 +388,12 @@ def recommend():
 
         # Check if we got any data
         if not user_openings or len(user_openings) == 0:
-            if platform in ['lichess', 'chesscom', 'chess.com']:
+            # Provide helpful error message based on platform
+            if platform_used == 'Chess.com':
+                return jsonify({
+                    "error": f"No opening data found for Chess.com user '{username}'. Chess.com doesn't store opening information for older games. Try using your Lichess account instead, or play some recent games on Chess.com."
+                }), 400
+            elif platform in ['lichess', 'chesscom', 'chess.com']:
                 return jsonify({
                     "error": f"Could not fetch games for user '{username}' on {platform.capitalize()}. Please check the username is correct."
                 }), 404
