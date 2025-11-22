@@ -52,8 +52,14 @@ def get_recommendation_engine():
             logger.info(f"Loaded network: {_relatedness_network.number_of_nodes()} nodes, "
                        f"{_relatedness_network.number_of_edges()} edges")
 
-            # Calculate complexity scores based on network structure
-            # Use degree centrality as proxy: more connected = more complex
+            # Calculate complexity scores based on filtered network structure
+            #
+            # NOTE: We use degree centrality instead of EFC scores because:
+            # - EFC measures "rarity" (rare openings = high complexity)
+            # - But in chess, popular openings are often MORE complex (deeper theory)
+            # - Degree centrality captures: more connections = more strategic depth
+            # - Connections are filtered (z-score > 2.0), so only significant relationships count
+            #
             degrees = dict(_relatedness_network.degree())
             if degrees:
                 max_degree = max(degrees.values())
@@ -67,12 +73,14 @@ def get_recommendation_engine():
                     else:
                         normalized = 0.5
 
-                    # Map to more intuitive range [0.3, 1.0]
-                    # Less connected = simpler (0.3-0.5)
-                    # More connected = more complex (0.5-1.0)
+                    # Map to interpretable range [0.3, 1.0]
+                    # 0.3-0.4: Beginner-friendly (few connections, niche)
+                    # 0.4-0.6: Intermediate (moderate connections)
+                    # 0.6-0.8: Advanced (many connections, strategic depth)
+                    # 0.8-1.0: Expert (highly connected, complex theory)
                     _relatedness_network.nodes[opening]['complexity'] = 0.3 + (normalized * 0.7)
 
-                logger.info(f"Calculated complexity scores based on network degree (range: {min_degree} - {max_degree} connections)")
+                logger.info(f"Calculated complexity scores from network topology (range: {min_degree}-{max_degree} connections)")
             else:
                 logger.warning("Could not calculate complexity scores from network")
 

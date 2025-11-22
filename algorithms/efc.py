@@ -9,6 +9,20 @@ The EFC algorithm measures:
 - Player Fitness (F): Capability based on diversity of openings played
 - Opening Complexity (Q): Sophistication based on diversity of players who use it
 
+**IMPORTANT NOTE FOR CHESS APPLICATIONS**:
+The EFC algorithm produces "rarity" scores, not chess-complexity scores.
+- Rare openings (few players) → HIGH EFC complexity
+- Popular openings (many players) → LOW EFC complexity
+
+This is backwards for chess intuition:
+- Sicilian Defense (99,975 players) → EFC ≈ 0 (but actually very complex!)
+- Obscure openings (2 players) → EFC ≈ 144 (but actually simple!)
+
+For chess-specific complexity, consider using:
+- Network degree centrality after z-score filtering
+- Popularity-weighted metrics
+- Theoretical depth (if available)
+
 References:
     - Tacchella, A., et al. (2012). A new metrics for countries' fitness and products' complexity.
     - Original paper Section: "Economic Fitness and Complexity"
