@@ -200,6 +200,120 @@ def extract_openings_and_rating(pgn_data, username):
     return openings, avg_rating
 
 
+def fetch_games_chesscom(username, num_games=100):
+    """
+    Fetch games for a user from Chess.com API.
+
+    Args:
+        username: Chess.com username
+        num_games: Maximum number of games to fetch (approx)
+
+    Returns:
+        List of game dictionaries or None on error
+    """
+    try:
+        # First, get the list of monthly archives
+        archives_url = f'https://api.chess.com/pub/player/{username}/games/archives'
+        headers = {
+            'User-Agent': 'OpeningRecs/2.0 (contact@serialexperiment.ing)'
+        }
+
+        logger.info(f"Fetching Chess.com archives for user: {username}")
+        archives_response = requests.get(archives_url, headers=headers, timeout=30)
+
+        if archives_response.status_code == 404:
+            logger.warning(f"Chess.com user not found: {username}")
+            return None
+        elif archives_response.status_code != 200:
+            logger.error(f"Chess.com API error: {archives_response.status_code}")
+            return None
+
+        archives = archives_response.json().get('archives', [])
+        if not archives:
+            logger.warning(f"No game archives found for Chess.com user: {username}")
+            return None
+
+        # Fetch games from most recent archives until we have enough games
+        all_games = []
+        for archive_url in reversed(archives):  # Start from most recent
+            if len(all_games) >= num_games:
+                break
+
+            logger.info(f"Fetching games from archive: {archive_url}")
+            games_response = requests.get(archive_url, headers=headers, timeout=30)
+
+            if games_response.status_code == 200:
+                games_data = games_response.json().get('games', [])
+                all_games.extend(games_data)
+                logger.info(f"Fetched {len(games_data)} games from archive")
+            else:
+                logger.warning(f"Failed to fetch archive {archive_url}: {games_response.status_code}")
+
+        if all_games:
+            logger.info(f"Successfully fetched {len(all_games)} total games for {username}")
+            return all_games[:num_games]  # Limit to requested number
+        else:
+            logger.warning(f"No games found for Chess.com user: {username}")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Chess.com API request failed: {e}")
+        return None
+
+
+def extract_openings_and_rating_chesscom(games_data, username):
+    """
+    Extract openings and user rating from Chess.com game data.
+
+    Args:
+        games_data: List of game dictionaries from Chess.com API
+        username: Username to extract rating for
+
+    Returns:
+        Tuple of (openings_list, average_rating)
+    """
+    openings = []
+    ratings = []
+
+    for game in games_data:
+        try:
+            # Extract opening from ECO URL
+            # Chess.com stores openings in 'eco' field as URLs like:
+            # "https://www.chess.com/openings/Sicilian-Defense-..."
+            if 'eco' in game and isinstance(game['eco'], str):
+                eco_url = game['eco']
+                # Extract opening name from URL
+                if '/openings/' in eco_url:
+                    opening_slug = eco_url.split('/openings/')[-1]
+                    # Convert slug to readable name: "Sicilian-Defense-..." -> "Sicilian Defense"
+                    opening_name = opening_slug.replace('-', ' ')
+                    # Remove any trailing segments after numbers or extra details
+                    opening_name = opening_name.split('?')[0].strip()
+                    if opening_name:
+                        openings.append(opening_name)
+
+            # Extract rating for this user
+            # Chess.com structure: 'white' and 'black' objects with 'username' and 'rating'
+            username_lower = username.lower()
+
+            if 'white' in game and game['white'].get('username', '').lower() == username_lower:
+                if 'rating' in game['white']:
+                    ratings.append(game['white']['rating'])
+            elif 'black' in game and game['black'].get('username', '').lower() == username_lower:
+                if 'rating' in game['black']:
+                    ratings.append(game['black']['rating'])
+
+        except (KeyError, AttributeError) as e:
+            logger.warning(f"Failed to parse Chess.com game data: {e}")
+            continue
+
+    avg_rating = sum(ratings) / len(ratings) if ratings else None
+
+    logger.info(f"Extracted {len(openings)} openings from Chess.com, average rating: {avg_rating}")
+
+    return openings, avg_rating
+
+
 @app.route('/')
 def index():
     """Render homepage."""
@@ -221,14 +335,16 @@ def recommend():
     Returns JSON with recommendations and explanations.
     """
     try:
-        # Get username from request
+        # Get username and platform from request
         username = request.form.get('username') or request.json.get('username')
+        platform = request.form.get('platform') or request.json.get('platform', 'auto')
 
         if not username:
             return jsonify({"error": "Username is required"}), 400
 
         username = username.strip()
-        logger.info(f"Processing recommendation request for: {username}")
+        platform = platform.strip().lower()
+        logger.info(f"Processing recommendation request for: {username} (platform: {platform})")
 
         # Get recommendation engine
         engine = get_recommendation_engine()
@@ -238,25 +354,48 @@ def recommend():
                 "error": "Recommendation system not available. Please ensure the network has been built."
             }), 500
 
-        # Fetch user games
-        pgn_data = fetch_games(username, num_games=100)
+        # Fetch user games based on platform
+        user_openings = None
+        user_rating = None
+        platform_used = None
 
-        if not pgn_data:
-            logger.warning(f"No games found for user: {username}")
-            return jsonify({
-                "error": f"Could not fetch games for user '{username}'. Please check the username is correct."
-            }), 404
+        if platform == 'lichess':
+            # Try Lichess only
+            pgn_data = fetch_games(username, num_games=100)
+            if pgn_data:
+                user_openings, user_rating = extract_openings_and_rating(pgn_data, username)
+                platform_used = 'Lichess'
+        elif platform == 'chesscom' or platform == 'chess.com':
+            # Try Chess.com only
+            games_data = fetch_games_chesscom(username, num_games=100)
+            if games_data:
+                user_openings, user_rating = extract_openings_and_rating_chesscom(games_data, username)
+                platform_used = 'Chess.com'
+        else:
+            # Auto-detect: Try Lichess first, then Chess.com
+            pgn_data = fetch_games(username, num_games=100)
+            if pgn_data:
+                user_openings, user_rating = extract_openings_and_rating(pgn_data, username)
+                platform_used = 'Lichess'
+            else:
+                logger.info(f"User not found on Lichess, trying Chess.com...")
+                games_data = fetch_games_chesscom(username, num_games=100)
+                if games_data:
+                    user_openings, user_rating = extract_openings_and_rating_chesscom(games_data, username)
+                    platform_used = 'Chess.com'
 
-        # Extract openings and rating
-        user_openings, user_rating = extract_openings_and_rating(pgn_data, username)
+        # Check if we got any data
+        if not user_openings or len(user_openings) == 0:
+            if platform in ['lichess', 'chesscom', 'chess.com']:
+                return jsonify({
+                    "error": f"Could not fetch games for user '{username}' on {platform.capitalize()}. Please check the username is correct."
+                }), 404
+            else:
+                return jsonify({
+                    "error": f"Could not fetch games for user '{username}' on either Lichess or Chess.com. Please check the username is correct."
+                }), 404
 
-        if not user_openings:
-            logger.warning(f"No openings found for user: {username}")
-            return jsonify({
-                "error": "No games with opening information found. Please play more games!"
-            }), 400
-
-        logger.info(f"User openings: {user_openings[:5]}... (total: {len(user_openings)})")
+        logger.info(f"User openings from {platform_used}: {user_openings[:5]}... (total: {len(user_openings)})")
         logger.info(f"User rating: {user_rating}")
 
         # Generate recommendations using new engine
@@ -337,6 +476,7 @@ def recommend():
         response = {
             'recommendations': formatted_recommendations,
             'top_result_explanation': top_explanation,
+            'platform': platform_used,
             'user_stats': {
                 'games_analyzed': len(user_openings),
                 'unique_openings': len(set(user_openings)),
@@ -347,7 +487,8 @@ def recommend():
                     "Intermediate" if user_complexity < 0.6 else
                     "Advanced" if user_complexity < 0.8 else
                     "Expert"
-                )
+                ),
+                'platform': platform_used
             }
         }
 

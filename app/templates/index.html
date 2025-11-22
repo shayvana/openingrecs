@@ -144,6 +144,41 @@
             cursor: not-allowed;
         }
 
+        .platform-selector {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            padding: 0.5rem;
+        }
+
+        .platform-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+            color: #666;
+            transition: color 0.3s;
+        }
+
+        .platform-option:hover {
+            color: rgba(92, 124, 250, 0.9);
+        }
+
+        .platform-option input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: rgba(92, 124, 250, 0.7);
+        }
+
+        .platform-option input[type="radio"]:checked + span {
+            color: rgba(92, 124, 250, 0.9);
+            font-weight: 600;
+        }
+
         .loading {
             text-align: center;
             color: rgba(92, 124, 250, 0.7);
@@ -440,16 +475,30 @@
 
     <div class="container">
         <p class="intro-text">
-            enter your lichess username to receive opening recommendations<br>
+            enter your username to receive opening recommendations<br>
             based on economic fitness & complexity analysis
         </p>
 
         <div class="form-container">
             <form id="userForm">
+                <div class="platform-selector">
+                    <label class="platform-option">
+                        <input type="radio" name="platform" value="auto" checked>
+                        <span>auto-detect</span>
+                    </label>
+                    <label class="platform-option">
+                        <input type="radio" name="platform" value="lichess">
+                        <span>lichess</span>
+                    </label>
+                    <label class="platform-option">
+                        <input type="radio" name="platform" value="chesscom">
+                        <span>chess.com</span>
+                    </label>
+                </div>
                 <input
                     type="text"
                     id="username"
-                    placeholder="lichess username"
+                    placeholder="username"
                     required
                     autocomplete="off"
                 >
@@ -508,6 +557,7 @@
                 e.preventDefault();
 
                 var username = $('#username').val().trim();
+                var platform = $('input[name="platform"]:checked').val();
                 if (!username) return;
 
                 // Reset UI
@@ -522,7 +572,10 @@
                 $.ajax({
                     url: '/recommend',
                     type: 'POST',
-                    data: { username: username },
+                    data: {
+                        username: username,
+                        platform: platform
+                    },
                     success: function(data) {
                         $('#loading').hide();
                         $('#submitBtn').prop('disabled', false);
