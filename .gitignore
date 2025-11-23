@@ -65,6 +65,16 @@ data/bipartite_network_*.pkl
 # Exclude metadata file (11 MB - not loaded by app, data is in network as node attributes)
 data/*_metadata.pkl
 
+# Test and investigation files (not needed in production)
+data/*_test.pkl
+data/bipartite_network_test.pkl
+data/relatedness_network_test.pkl
+EFC_INVESTIGATION_REPORT.md
+PRODUCTION_DEPLOYMENT_v2.md
+v2.0_RELEASE_SUMMARY.md
+DEPLOY_V2_CHECKLIST.md
+*.pdf
+
 # Old/deprecated files
 app/download_data.py
 app/extract_pgn.py

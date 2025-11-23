@@ -82,7 +82,8 @@ def extract_bipartite_matrix(
             j = opening_to_idx[opening]
             weight = data.get('weight', 1.0)
             M[i, j] = weight
-        elif opening in player_to_idx and player in opening_to_idx:
+        elif player in opening_to_idx and opening in player_to_idx:
+            # Nodes are swapped: 'player' var contains opening, 'opening' var contains player
             i = player_to_idx[opening]
             j = opening_to_idx[player]
             weight = data.get('weight', 1.0)
@@ -99,7 +100,11 @@ def calculate_efc_metrics(
     openings: list
 ) -> Tuple[Dict[str, float], Dict[str, float]]:
     """
-    Calculate Economic Fitness and Complexity metrics.
+    Calculate Economic Fitness and Complexity metrics using NHEFC variant.
+
+    Following the Nature paper methodology (page 10):
+    1. Normalize frequencies: N_op = n_op / Σ_o n_op (each player's row sums to 1)
+    2. Use NHEFC algorithm with δ = 10^-3
 
     Args:
         bipartite_matrix: Binary/weighted matrix (n_players, n_openings)
@@ -109,25 +114,53 @@ def calculate_efc_metrics(
     Returns:
         Tuple of (player_fitness_dict, opening_complexity_dict)
     """
-    logger.info("Calculating EFC metrics...")
+    logger.info("Calculating EFC metrics using NHEFC...")
 
+    # Step 1: Normalize frequencies per player (N_op = n_op / Σ_o n_op)
+    # Each player's row should sum to 1.0
+    row_sums = bipartite_matrix.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0] = 1.0  # Avoid division by zero
+    normalized_matrix = bipartite_matrix / row_sums
+
+    logger.info(f"Normalized matrix: row_sums min={row_sums.min():.2f}, max={row_sums.max():.2f}")
+
+    # Step 2: Calculate NHEFC with δ = 10^-3 (as specified in paper)
     calculator = EFCCalculator(tolerance=1e-6, max_iterations=100)
 
     try:
-        fitness, complexity = calculator.calculate(bipartite_matrix)
+        fitness, complexity = calculator.calculate_nhefc(
+            normalized_matrix,
+            delta=1e-3  # δ = 10^-3 from paper page 10
+        )
+
+        # Normalize complexity to mean=1.0 (following paper Eq. 4 normalization approach)
+        # This makes values human-readable while preserving relative ranking
+        complexity_mean = np.mean(complexity)
+        if complexity_mean > 0:
+            complexity_normalized = complexity / complexity_mean
+        else:
+            complexity_normalized = complexity
+
+        # Normalize fitness to mean=1.0 as well
+        fitness_mean = np.mean(fitness)
+        if fitness_mean > 0:
+            fitness_normalized = fitness / fitness_mean
+        else:
+            fitness_normalized = fitness
 
         # Convert to dictionaries
-        player_fitness = {players[i]: fitness[i] for i in range(len(players))}
-        opening_complexity = {openings[j]: complexity[j] for j in range(len(openings))}
+        player_fitness = {players[i]: fitness_normalized[i] for i in range(len(players))}
+        opening_complexity = {openings[j]: complexity_normalized[j] for j in range(len(openings))}
 
-        logger.info(f"EFC converged in {calculator.iterations} iterations")
-        logger.info(f"Mean player fitness: {np.mean(fitness):.4f}")
-        logger.info(f"Mean opening complexity: {np.mean(complexity):.4f}")
+        logger.info(f"NHEFC converged in {calculator.iterations} iterations")
+        logger.info(f"Raw complexity: mean={complexity_mean:.4e}, std={np.std(complexity):.4e}")
+        logger.info(f"Normalized complexity: mean={np.mean(complexity_normalized):.4f}, std={np.std(complexity_normalized):.4f}")
+        logger.info(f"Normalized fitness: mean={np.mean(fitness_normalized):.4f}, std={np.std(fitness_normalized):.4f}")
 
         return player_fitness, opening_complexity
 
     except ValueError as e:
-        logger.error(f"EFC calculation failed: {e}")
+        logger.error(f"NHEFC calculation failed: {e}")
         raise
 
 

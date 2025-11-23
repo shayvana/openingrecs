@@ -172,6 +172,96 @@ class EFCCalculator:
 
         return F, Q
 
+    def calculate_nhefc(
+        self,
+        bipartite_matrix: np.ndarray,
+        delta: float = 1e-3
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Calculate fitness and complexity using Non-Homogeneous EFC (NHEFC) variant.
+
+        This is the variant used in the Nature paper (page 10) to avoid convergence issues.
+
+        Algorithm:
+            P^(t+1)_o = 1 + Σ_p N_po/F^(t)_p
+            F^(t+1)_p = δ² + Σ_o N_po/P^(t)_o
+            Q_o = 1/(P_o - 1)
+
+        Args:
+            bipartite_matrix: Frequency matrix of shape (n_players, n_openings)
+                             N[i,j] = normalized frequency (row sums should be ~1.0)
+            delta: Small parameter to avoid convergence issues (default: 1e-3)
+
+        Returns:
+            Tuple of (player_fitness, opening_complexity)
+            - player_fitness: Array of shape (n_players,)
+            - opening_complexity: Array of shape (n_openings,)
+
+        Raises:
+            ValueError: If matrix is invalid or algorithm doesn't converge
+        """
+        # Validate input
+        if bipartite_matrix.shape[0] == 0 or bipartite_matrix.shape[1] == 0:
+            raise ValueError("Bipartite matrix cannot be empty")
+
+        if not np.any(bipartite_matrix):
+            raise ValueError("Bipartite matrix must have at least one non-zero entry")
+
+        n_players, n_openings = bipartite_matrix.shape
+        logger.info(f"Starting NHEFC calculation (δ={delta}) for {n_players} players and {n_openings} openings")
+
+        # Initialize
+        P = np.ones(n_openings)
+        F = np.ones(n_players)
+
+        self.converged = False
+        self.iterations = 0
+
+        for iteration in range(self.max_iterations):
+            self.iterations = iteration + 1
+
+            # Store previous values for convergence check
+            P_prev = P.copy()
+            F_prev = F.copy()
+
+            # Step 1: Update P_o = 1 + Σ_p N_po/F_p
+            # Avoid division by zero
+            P_new = 1.0 + (bipartite_matrix / np.maximum(F[:, np.newaxis], 1e-10)).sum(axis=0)
+
+            # Step 2: Update F_p = δ² + Σ_o N_po/P_o
+            F_new = delta**2 + (bipartite_matrix / np.maximum(P[np.newaxis, :], 1e-10)).sum(axis=1)
+
+            # Check convergence
+            P_change = np.max(np.abs(P_new - P_prev) / (P_prev + 1e-10))
+            F_change = np.max(np.abs(F_new - F_prev) / (F_prev + 1e-10))
+            max_change = max(P_change, F_change)
+
+            logger.debug(f"Iteration {iteration + 1}: max_change = {max_change:.8f}")
+
+            # Update values
+            P = P_new
+            F = F_new
+
+            # Check if converged
+            if max_change < self.tolerance:
+                self.converged = True
+                logger.info(f"NHEFC converged after {iteration + 1} iterations")
+                break
+
+        if not self.converged:
+            logger.warning(
+                f"NHEFC did not converge after {self.max_iterations} iterations. "
+                f"Final change: {max_change:.8f}"
+            )
+            raise ValueError(
+                f"NHEFC algorithm did not converge within {self.max_iterations} iterations"
+            )
+
+        # Calculate final complexity: Q_o = 1/(P_o - 1)
+        Q = 1.0 / np.maximum(P - 1.0, 1e-10)
+
+        return F, Q
+
     def calculate_from_edgelist(
         self,
         player_opening_pairs: list,

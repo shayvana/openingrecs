@@ -39,8 +39,8 @@ def get_recommendation_engine():
 
     if _recommendation_engine is None:
         try:
-            # Load network
-            network_path = 'data/relatedness_network.pkl'
+            # Load network (v2.0 with NHEFC complexity scores)
+            network_path = 'data/relatedness_network_v2.pkl'
             if not os.path.exists(network_path):
                 logger.warning(f"Network not found at {network_path}")
                 return None
@@ -52,47 +52,35 @@ def get_recommendation_engine():
             logger.info(f"Loaded network: {_relatedness_network.number_of_nodes()} nodes, "
                        f"{_relatedness_network.number_of_edges()} edges")
 
-            # Calculate complexity scores based on filtered network structure
-            #
-            # NOTE: We use degree centrality instead of EFC scores because:
-            # - EFC measures "rarity" (rare openings = high complexity)
-            # - But in chess, popular openings are often MORE complex (deeper theory)
-            # - Degree centrality captures: more connections = more strategic depth
-            # - Connections are filtered (z-score > 2.0), so only significant relationships count
-            #
-            degrees = dict(_relatedness_network.degree())
-            if degrees:
-                max_degree = max(degrees.values())
-                min_degree = min(degrees.values())
-
-                for opening in _relatedness_network.nodes():
-                    degree = degrees.get(opening, 0)
-                    # Normalize to [0, 1] range
-                    if max_degree > min_degree:
-                        normalized = (degree - min_degree) / (max_degree - min_degree)
-                    else:
-                        normalized = 0.5
-
-                    # Map to interpretable range [0.3, 1.0]
-                    # 0.3-0.4: Beginner-friendly (few connections, niche)
-                    # 0.4-0.6: Intermediate (moderate connections)
-                    # 0.6-0.8: Advanced (many connections, strategic depth)
-                    # 0.8-1.0: Expert (highly connected, complex theory)
-                    _relatedness_network.nodes[opening]['complexity'] = 0.3 + (normalized * 0.7)
-
-                logger.info(f"Calculated complexity scores from network topology (range: {min_degree}-{max_degree} connections)")
-            else:
-                logger.warning("Could not calculate complexity scores from network")
-
-            # Load additional metadata if available
-            metadata_path = 'data/relatedness_network_metadata.pkl'
+            # Load NHEFC complexity scores from metadata
+            # v2.0 uses proper Economic Fitness & Complexity algorithm from Nature paper
+            metadata_path = 'data/relatedness_network_v2_metadata.pkl'
             if os.path.exists(metadata_path):
                 logger.info(f"Loading network metadata from {metadata_path}")
                 with open(metadata_path, 'rb') as f:
                     metadata = pickle.load(f)
-                logger.info(f"Loaded metadata with keys: {metadata.keys()}")
+
+                # Add EFC complexity scores to network nodes
+                if 'opening_complexity' in metadata:
+                    complexity_scores = metadata['opening_complexity']
+                    for opening in _relatedness_network.nodes():
+                        if opening in complexity_scores:
+                            # NHEFC scores are already normalized (mean=1.0)
+                            # Scores range from ~0.0003 (popular) to ~50+ (rare/expert-level)
+                            _relatedness_network.nodes[opening]['complexity'] = complexity_scores[opening]
+
+                    logger.info(f"Loaded NHEFC complexity scores for {len(complexity_scores)} openings")
+                    logger.info(f"Complexity range: {min(complexity_scores.values()):.4f} to {max(complexity_scores.values()):.4f}")
+                else:
+                    logger.warning("No opening_complexity found in metadata, using default scores")
+                    for opening in _relatedness_network.nodes():
+                        _relatedness_network.nodes[opening]['complexity'] = 1.0
+
+                logger.info(f"Metadata loaded with keys: {metadata.keys()}")
             else:
-                logger.warning(f"Metadata file not found: {metadata_path}")
+                logger.warning(f"Metadata file not found: {metadata_path}, using default complexity scores")
+                for opening in _relatedness_network.nodes():
+                    _relatedness_network.nodes[opening]['complexity'] = 1.0
 
             # Create recommendation engine
             _recommendation_engine = RecommendationEngine(
