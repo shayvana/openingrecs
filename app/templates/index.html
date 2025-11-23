@@ -603,7 +603,11 @@
                         if (data.recommendations && data.recommendations.length > 0) {
                             data.recommendations.forEach(function(rec, index) {
                                 var complexityClass = 'complexity-' + (rec.complexity_label || 'intermediate').toLowerCase().replace('-', '');
-                                var complexityText = rec.complexity ? rec.complexity.toFixed(2) : 'n/a';
+                                // Adaptive precision: show more decimals for small values
+                                var complexityText = rec.complexity ?
+                                    (rec.complexity < 0.01 ? rec.complexity.toFixed(4) :
+                                     rec.complexity < 1 ? rec.complexity.toFixed(3) :
+                                     rec.complexity.toFixed(2)) : 'n/a';
                                 var complexityLabel = rec.complexity_label || 'Unknown';
 
                                 // Match badge
