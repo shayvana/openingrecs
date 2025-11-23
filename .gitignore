@@ -62,8 +62,11 @@ data/openings.txt
 data/bipartite_network.pkl
 data/bipartite_network_*.pkl
 
-# Exclude metadata file (11 MB - not loaded by app, data is in network as node attributes)
-data/*_metadata.pkl
+# Exclude old metadata files (not used by v2.0)
+# KEEP v2 metadata in git - it's required for NHEFC complexity scores
+data/relatedness_network_metadata.pkl
+data/bipartite_network_metadata.pkl
+data/*_test_metadata.pkl
 
 # Test and investigation files (not needed in production)
 data/*_test.pkl
