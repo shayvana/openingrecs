@@ -419,12 +419,12 @@ def recommend():
                 node_data = _relatedness_network.nodes[opening]
                 complexity = node_data.get('complexity', 0.5)
 
-                # Calculate complexity level label
-                if complexity < 0.4:
+                # Calculate complexity level label (NHEFC scale: mean=1.0, range=0.0003-52+)
+                if complexity < 0.5:
                     complexity_label = "Beginner-friendly"
-                elif complexity < 0.6:
+                elif complexity < 1.5:
                     complexity_label = "Intermediate"
-                elif complexity < 0.8:
+                elif complexity < 5.0:
                     complexity_label = "Advanced"
                 else:
                     complexity_label = "Expert"
@@ -445,7 +445,7 @@ def recommend():
                     'complexity': round(complexity, 3),
                     'complexity_label': complexity_label,
                     'complexity_match': round(abs(complexity - user_complexity), 3),
-                    'is_good_match': bool(abs(complexity - user_complexity) < 0.2),
+                    'is_good_match': bool(abs(complexity - user_complexity) < 1.5),  # NHEFC scale threshold
                     'related_openings': related_openings,
                     'num_connections': int(num_connections)
                 }
@@ -478,9 +478,9 @@ def recommend():
                 'rating': user_rating,
                 'complexity_level': round(user_complexity, 3),
                 'complexity_label': (
-                    "Beginner" if user_complexity < 0.4 else
-                    "Intermediate" if user_complexity < 0.6 else
-                    "Advanced" if user_complexity < 0.8 else
+                    "Beginner" if user_complexity < 0.5 else
+                    "Intermediate" if user_complexity < 1.5 else
+                    "Advanced" if user_complexity < 5.0 else
                     "Expert"
                 ),
                 'platform': platform_used
