@@ -42,7 +42,8 @@ def get_recommendation_engine():
             # Load network (v2.0 with NHEFC complexity scores)
             network_path = 'data/relatedness_network_v2.pkl'
             if not os.path.exists(network_path):
-                logger.warning(f"Network not found at {network_path}")
+                logger.error(f"Network file not found: {network_path}")
+                logger.error("Please run: python3 scripts/reprocess_existing_network.py")
                 return None
 
             logger.info(f"Loading relatedness network from {network_path}")
@@ -341,7 +342,7 @@ def recommend():
         if engine is None:
             logger.error("Recommendation engine not available")
             return jsonify({
-                "error": "Recommendation system not available. Please ensure the network has been built."
+                "error": "Recommendation system not available. The network data files are missing. Please contact the administrator."
             }), 500
 
         # Fetch user games based on platform
@@ -429,11 +430,13 @@ def recommend():
                 else:
                     complexity_label = "Expert"
 
-                # Find related openings
+                # Find related openings (filter out invalid names)
                 related_openings = []
                 if opening in _relatedness_network:
-                    neighbors = list(_relatedness_network.neighbors(opening))[:3]
-                    related_openings = neighbors
+                    neighbors = list(_relatedness_network.neighbors(opening))
+                    # Filter out invalid opening names like "?"
+                    valid_neighbors = [n for n in neighbors if n and n != '?' and len(n) > 1]
+                    related_openings = valid_neighbors[:3]
 
                 # Calculate network connections
                 num_connections = _relatedness_network.degree(opening)

@@ -154,6 +154,9 @@ class RecommendationEngine:
                 continue
 
             for neighbor in self.network.neighbors(user_opening):
+                # Skip invalid opening names and openings user already plays
+                if neighbor == '?' or not neighbor or len(neighbor) <= 1:
+                    continue
                 if neighbor not in normalized:  # Don't recommend what they already play
                     edge_data = self.network[user_opening][neighbor]
                     weight = edge_data.get('weight', 1.0)
@@ -185,7 +188,7 @@ class RecommendationEngine:
         self,
         candidates: Dict[str, float],
         target_complexity: float,
-        tolerance: float = 0.3
+        tolerance: float = 0.5
     ) -> Dict[str, float]:
         """
         Filter candidates by complexity appropriateness.
@@ -195,7 +198,7 @@ class RecommendationEngine:
         Args:
             candidates: Dictionary of candidate openings and scores
             target_complexity: Target complexity level
-            tolerance: Acceptable complexity range (±tolerance)
+            tolerance: Acceptable complexity range as multiplier (default 0.5 = 50%)
 
         Returns:
             Dictionary with complexity scores [0, 1]
@@ -203,8 +206,8 @@ class RecommendationEngine:
         complexity_scores = {}
 
         # Prefer openings slightly above current level
-        # Optimal complexity: target + 0.1 (stretch goal)
-        optimal_complexity = target_complexity + 0.1
+        # Optimal complexity: target * 1.2 (stretch goal)
+        optimal_complexity = target_complexity * 1.2
 
         for opening, _ in candidates.items():
             if opening not in self.network.nodes:
@@ -212,15 +215,19 @@ class RecommendationEngine:
 
             opening_complexity = self.network.nodes[opening].get('complexity', 1.0)
 
-            # Calculate how far from optimal
-            distance = abs(opening_complexity - optimal_complexity)
+            # Use relative distance for NHEFC scores (which span 0.0003 to 50+)
+            # Calculate distance as a ratio to handle wide range
+            if optimal_complexity > 0:
+                relative_distance = abs(opening_complexity - optimal_complexity) / max(optimal_complexity, 0.01)
+            else:
+                relative_distance = abs(opening_complexity - optimal_complexity)
 
-            # Score decreases with distance
-            if distance <= tolerance:
-                score = 1.0 - (distance / tolerance)
+            # Score decreases with relative distance
+            if relative_distance <= tolerance:
+                score = 1.0 - (relative_distance / tolerance)
             else:
                 # Beyond tolerance: exponential decay
-                score = np.exp(-(distance - tolerance))
+                score = np.exp(-(relative_distance - tolerance))
 
             complexity_scores[opening] = score
 
@@ -248,11 +255,21 @@ class RecommendationEngine:
             if opening not in self.network.nodes:
                 continue
 
+            # Use network degree as popularity proxy
+            # Higher degree = more connections = more popular
+            degree = self.network.degree(opening)
+
+            # Also check if play_count/player_diversity are available
             play_count = self.network.nodes[opening].get('play_count', 0)
             player_diversity = self.network.nodes[opening].get('player_diversity', 0)
 
-            # Popularity based on both play count and player diversity
-            popularity = np.log(play_count + 1) * np.log(player_diversity + 1)
+            # Use degree-based popularity if counts aren't available
+            if play_count > 0 and player_diversity > 0:
+                popularity = np.log(play_count + 1) * np.log(player_diversity + 1)
+            else:
+                # Fallback to network degree
+                popularity = np.log(degree + 1)
+
             popularity_scores[opening] = popularity
 
         # Normalize
