@@ -1,524 +1,334 @@
-"""
-Flask web application for chess opening recommendations.
-
-Updated to use corrected methodology from Nature paper.
-"""
-
-import requests
 import json
-import pickle
-import networkx as nx
-from flask import Flask, render_template, request, jsonify
-import os
 import logging
+import os
+import pickle
 import sys
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import requests
+from flask import Flask, jsonify, render_template, request
 
-# Import new recommendation engine
-from app.recommendation_engine_v2 import RecommendationEngine
+# Add this file's directory to sys.path so recommendation_engine_v2 is importable
+# both when run directly (python3 app/app.py) and via Vercel's Python builder.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from recommendation_engine_v2 import RecommendationEngine
 
-# Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s %(name)s %(levelname)s %(message)s',
 )
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
-# Global variable to cache the network
-_relatedness_network = None
-_recommendation_engine = None
+_network = None
+_engine: RecommendationEngine | None = None
 
 
-def get_recommendation_engine():
-    """Get or create recommendation engine (cached)."""
-    global _relatedness_network, _recommendation_engine
+# ------------------------------------------------------------------
+# Label helpers
+# ------------------------------------------------------------------
 
-    if _recommendation_engine is None:
-        try:
-            # Load network (v2.0 with NHEFC complexity scores)
-            network_path = 'data/relatedness_network_v2.pkl'
-            if not os.path.exists(network_path):
-                logger.error(f"Network file not found: {network_path}")
-                logger.error("Please run: python3 scripts/reprocess_existing_network.py")
-                return None
-
-            logger.info(f"Loading relatedness network from {network_path}")
-            with open(network_path, 'rb') as f:
-                _relatedness_network = pickle.load(f)
-
-            logger.info(f"Loaded network: {_relatedness_network.number_of_nodes()} nodes, "
-                       f"{_relatedness_network.number_of_edges()} edges")
-
-            # Load NHEFC complexity scores from metadata
-            # v2.0 uses proper Economic Fitness & Complexity algorithm from Nature paper
-            metadata_path = 'data/relatedness_network_v2_metadata.pkl'
-            if os.path.exists(metadata_path):
-                logger.info(f"Loading network metadata from {metadata_path}")
-                with open(metadata_path, 'rb') as f:
-                    metadata = pickle.load(f)
-
-                # Add EFC complexity scores to network nodes
-                if 'opening_complexity' in metadata:
-                    complexity_scores = metadata['opening_complexity']
-                    for opening in _relatedness_network.nodes():
-                        if opening in complexity_scores:
-                            # NHEFC scores are already normalized (mean=1.0)
-                            # Scores range from ~0.0003 (popular) to ~50+ (rare/expert-level)
-                            _relatedness_network.nodes[opening]['complexity'] = complexity_scores[opening]
-
-                    logger.info(f"Loaded NHEFC complexity scores for {len(complexity_scores)} openings")
-                    logger.info(f"Complexity range: {min(complexity_scores.values()):.4f} to {max(complexity_scores.values()):.4f}")
-                else:
-                    logger.warning("No opening_complexity found in metadata, using default scores")
-                    for opening in _relatedness_network.nodes():
-                        _relatedness_network.nodes[opening]['complexity'] = 1.0
-
-                logger.info(f"Metadata loaded with keys: {metadata.keys()}")
-            else:
-                logger.warning(f"Metadata file not found: {metadata_path}, using default complexity scores")
-                for opening in _relatedness_network.nodes():
-                    _relatedness_network.nodes[opening]['complexity'] = 1.0
-
-            # Create recommendation engine
-            _recommendation_engine = RecommendationEngine(
-                _relatedness_network,
-                complexity_weight=0.3,
-                similarity_weight=0.4,
-                popularity_weight=0.2,
-                novelty_weight=0.1
-            )
-
-            logger.info("Recommendation engine initialized")
-
-        except Exception as e:
-            logger.error(f"Error loading network or creating engine: {e}", exc_info=True)
-            return None
-
-    return _recommendation_engine
+def _rarity_label(rarity: float) -> str:
+    """Human-readable label for an EFC rarity score."""
+    if rarity < 0.1:
+        return "Very Popular"
+    if rarity < 1.0:
+        return "Popular"
+    if rarity < 5.0:
+        return "Niche"
+    return "Obscure"
 
 
-def fetch_games(username, num_games=100):
-    """
-    Fetch games for a user from Lichess API.
+def _repertoire_style(median_rarity: float) -> str:
+    """Describe how mainstream or niche a player's opening repertoire is."""
+    if median_rarity < 0.1:
+        return "Mainstream"
+    if median_rarity < 1.0:
+        return "Varied"
+    if median_rarity < 5.0:
+        return "Niche"
+    return "Highly Specialized"
 
-    Args:
-        username: Lichess username
-        num_games: Maximum number of games to fetch
 
-    Returns:
-        Response text or None on error
-    """
-    url = f'https://lichess.org/api/games/user/{username}'
-    headers = {
-        'Accept': 'application/x-ndjson'
-    }
-    params = {
-        'max': num_games,
-        'opening': True,
-        'pgnInJson': True,
-        'rated': True  # Prefer rated games to get ratings
-    }
+# ------------------------------------------------------------------
+# Engine bootstrap
+# ------------------------------------------------------------------
+
+def get_engine() -> RecommendationEngine | None:
+    """Load the network and build the recommendation engine on first call."""
+    global _network, _engine
+    if _engine is not None:
+        return _engine
 
     try:
-        logger.info(f"Fetching games for user: {username}")
-        response = requests.get(url, headers=headers, params=params, timeout=30)
-
-        if response.status_code == 200:
-            logger.info(f"Successfully fetched games for {username}")
-            return response.text
-        elif response.status_code == 404:
-            logger.warning(f"User not found: {username}")
+        network_path = 'data/relatedness_network_v2.pkl'
+        if not os.path.exists(network_path):
+            logger.error("Network file not found: %s", network_path)
             return None
+
+        with open(network_path, 'rb') as f:
+            _network = pickle.load(f)
+
+        if '?' in _network:
+            _network.remove_node('?')
+
+        metadata_path = 'data/relatedness_network_v2_metadata.pkl'
+        if os.path.exists(metadata_path):
+            with open(metadata_path, 'rb') as f:
+                metadata = pickle.load(f)
+            rarity_scores = metadata.get('opening_complexity', {})
         else:
-            logger.error(f"API error: {response.status_code}")
-            return None
+            logger.warning("Metadata file not found; rarity scores will default to 1.0")
+            rarity_scores = {}
 
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request failed: {e}")
+        for node in _network.nodes():
+            _network.nodes[node]['complexity'] = rarity_scores.get(node, 1.0)
+
+        logger.info(
+            "Network loaded: %d openings, %d edges",
+            _network.number_of_nodes(),
+            _network.number_of_edges(),
+        )
+        _engine = RecommendationEngine(_network)
+        return _engine
+
+    except Exception:
+        logger.exception("Failed to load network or build recommendation engine")
         return None
 
 
-def extract_openings_and_rating(pgn_data, username):
-    """
-    Extract openings and user rating from PGN data.
+# ------------------------------------------------------------------
+# Game fetching
+# ------------------------------------------------------------------
 
-    Args:
-        pgn_data: NDJSON response from Lichess API
-        username: Username to extract rating for
+def _fetch_lichess(username: str, num_games: int = 100) -> str | None:
+    try:
+        resp = requests.get(
+            f'https://lichess.org/api/games/user/{username}',
+            headers={'Accept': 'application/x-ndjson'},
+            params={'max': num_games, 'opening': True, 'pgnInJson': True, 'rated': True},
+            timeout=30,
+        )
+        if resp.status_code == 200:
+            return resp.text
+        if resp.status_code != 404:
+            logger.error("Lichess API returned %d for %s", resp.status_code, username)
+        return None
+    except requests.RequestException as e:
+        logger.error("Lichess request failed: %s", e)
+        return None
 
-    Returns:
-        Tuple of (openings_list, average_rating)
-    """
-    openings = []
-    ratings = []
 
-    for line in pgn_data.strip().split('\n'):
-        if not line.strip():
+def _parse_lichess(ndjson: str, username: str) -> tuple[list[str], float | None]:
+    openings, ratings = [], []
+    username_lower = username.lower()
+    for line in ndjson.strip().splitlines():
+        if not line:
             continue
-
         try:
-            game_data = json.loads(line)
-
-            # Extract opening
-            if 'opening' in game_data and 'name' in game_data['opening']:
-                openings.append(game_data['opening']['name'])
-
-            # Extract rating for this user
-            if 'players' in game_data:
-                for color in ['white', 'black']:
-                    if (color in game_data['players'] and
-                        'user' in game_data['players'][color] and
-                        game_data['players'][color]['user'].get('name', '').lower() == username.lower()):
-
-                        if 'rating' in game_data['players'][color]:
-                            ratings.append(game_data['players'][color]['rating'])
-                        break
-
+            game = json.loads(line)
+            if 'opening' in game and 'name' in game['opening']:
+                openings.append(game['opening']['name'])
+            for color in ('white', 'black'):
+                player = game.get('players', {}).get(color, {})
+                if player.get('user', {}).get('name', '').lower() == username_lower:
+                    if 'rating' in player:
+                        ratings.append(player['rating'])
+                    break
         except json.JSONDecodeError:
-            logger.warning(f"Failed to parse game data: {line[:100]}")
             continue
-
     avg_rating = sum(ratings) / len(ratings) if ratings else None
-
-    logger.info(f"Extracted {len(openings)} openings, average rating: {avg_rating}")
-
     return openings, avg_rating
 
 
-def fetch_games_chesscom(username, num_games=100):
-    """
-    Fetch games for a user from Chess.com API.
-
-    Args:
-        username: Chess.com username
-        num_games: Maximum number of games to fetch (approx)
-
-    Returns:
-        List of game dictionaries or None on error
-    """
+def _fetch_chesscom(username: str, num_games: int = 100) -> list | None:
+    headers = {'User-Agent': 'OpeningRecs/2.0 (contact@serialexperiment.ing)'}
     try:
-        # First, get the list of monthly archives
-        archives_url = f'https://api.chess.com/pub/player/{username}/games/archives'
-        headers = {
-            'User-Agent': 'OpeningRecs/2.0 (contact@serialexperiment.ing)'
-        }
-
-        logger.info(f"Fetching Chess.com archives for user: {username}")
-        archives_response = requests.get(archives_url, headers=headers, timeout=30)
-
-        if archives_response.status_code == 404:
-            logger.warning(f"Chess.com user not found: {username}")
+        resp = requests.get(
+            f'https://api.chess.com/pub/player/{username}/games/archives',
+            headers=headers,
+            timeout=30,
+        )
+        if resp.status_code == 404:
             return None
-        elif archives_response.status_code != 200:
-            logger.error(f"Chess.com API error: {archives_response.status_code}")
+        if resp.status_code != 200:
+            logger.error("Chess.com archives API returned %d", resp.status_code)
             return None
 
-        archives = archives_response.json().get('archives', [])
+        archives = resp.json().get('archives', [])
         if not archives:
-            logger.warning(f"No game archives found for Chess.com user: {username}")
             return None
 
-        # Fetch games from most recent archives until we have enough games
-        all_games = []
-        for archive_url in reversed(archives):  # Start from most recent
-            if len(all_games) >= num_games:
+        games = []
+        for url in reversed(archives):
+            if len(games) >= num_games:
                 break
+            r = requests.get(url, headers=headers, timeout=30)
+            if r.status_code == 200:
+                games.extend(r.json().get('games', []))
 
-            logger.info(f"Fetching games from archive: {archive_url}")
-            games_response = requests.get(archive_url, headers=headers, timeout=30)
+        return games[:num_games] if games else None
 
-            if games_response.status_code == 200:
-                games_data = games_response.json().get('games', [])
-                all_games.extend(games_data)
-                logger.info(f"Fetched {len(games_data)} games from archive")
-            else:
-                logger.warning(f"Failed to fetch archive {archive_url}: {games_response.status_code}")
-
-        if all_games:
-            logger.info(f"Successfully fetched {len(all_games)} total games for {username}")
-            return all_games[:num_games]  # Limit to requested number
-        else:
-            logger.warning(f"No games found for Chess.com user: {username}")
-            return None
-
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Chess.com API request failed: {e}")
+    except requests.RequestException as e:
+        logger.error("Chess.com request failed: %s", e)
         return None
 
 
-def extract_openings_and_rating_chesscom(games_data, username):
-    """
-    Extract openings and user rating from Chess.com game data.
-
-    Args:
-        games_data: List of game dictionaries from Chess.com API
-        username: Username to extract rating for
-
-    Returns:
-        Tuple of (openings_list, average_rating)
-    """
-    openings = []
-    ratings = []
-
-    for game in games_data:
+def _parse_chesscom(games: list, username: str) -> tuple[list[str], float | None]:
+    openings, ratings = [], []
+    username_lower = username.lower()
+    for game in games:
         try:
-            # Extract opening from ECO URL
-            # Chess.com stores openings in 'eco' field as URLs like:
-            # "https://www.chess.com/openings/Sicilian-Defense-..."
-            # Note: Older games may have "Undefined" which we skip
-            if 'eco' in game and isinstance(game['eco'], str):
-                eco_url = game['eco']
-                # Extract opening name from URL
-                if '/openings/' in eco_url:
-                    opening_slug = eco_url.split('/openings/')[-1]
-                    # Convert slug to readable name: "Sicilian-Defense-..." -> "Sicilian Defense"
-                    opening_name = opening_slug.replace('-', ' ')
-                    # Remove any trailing segments after numbers or extra details
-                    opening_name = opening_name.split('?')[0].strip()
-                    # Skip undefined/unknown openings (common in older Chess.com games)
-                    if opening_name and opening_name.lower() not in ['undefined', 'unknown']:
-                        openings.append(opening_name)
-
-            # Extract rating for this user
-            # Chess.com structure: 'white' and 'black' objects with 'username' and 'rating'
-            username_lower = username.lower()
-
-            if 'white' in game and game['white'].get('username', '').lower() == username_lower:
-                if 'rating' in game['white']:
-                    ratings.append(game['white']['rating'])
-            elif 'black' in game and game['black'].get('username', '').lower() == username_lower:
-                if 'rating' in game['black']:
-                    ratings.append(game['black']['rating'])
-
-        except (KeyError, AttributeError) as e:
-            logger.warning(f"Failed to parse Chess.com game data: {e}")
+            eco_url = game.get('eco', '')
+            if '/openings/' in eco_url:
+                slug = eco_url.split('/openings/')[-1].split('?')[0]
+                name = slug.replace('-', ' ').strip()
+                if name and name.lower() not in ('undefined', 'unknown'):
+                    openings.append(name)
+            for color in ('white', 'black'):
+                side = game.get(color, {})
+                if side.get('username', '').lower() == username_lower:
+                    if 'rating' in side:
+                        ratings.append(side['rating'])
+                    break
+        except (KeyError, AttributeError):
             continue
-
     avg_rating = sum(ratings) / len(ratings) if ratings else None
-
-    logger.info(f"Extracted {len(openings)} openings from Chess.com, average rating: {avg_rating}")
-
     return openings, avg_rating
 
+
+# ------------------------------------------------------------------
+# Routes
+# ------------------------------------------------------------------
 
 @app.route('/')
 def index():
-    """Render homepage."""
     return render_template('index.html')
 
 
 @app.route('/methodology')
 def methodology():
-    """Render methodology page."""
     return render_template('methodology.html')
 
 
 @app.route('/recommend', methods=['POST'])
 def recommend():
-    """
-    Generate opening recommendations for a user.
+    form = request.form
+    body = request.json or {}
+    username = (form.get('username') or body.get('username', '')).strip()
+    platform = (form.get('platform') or body.get('platform', 'auto')).strip().lower()
 
-    Expects JSON with 'username' field.
-    Returns JSON with recommendations and explanations.
-    """
-    try:
-        # Get username and platform from request
-        username = request.form.get('username') or request.json.get('username')
-        platform = request.form.get('platform') or request.json.get('platform', 'auto')
+    if not username:
+        return jsonify({'error': 'Username is required'}), 400
 
-        if not username:
-            return jsonify({"error": "Username is required"}), 400
+    engine = get_engine()
+    if engine is None:
+        return jsonify({'error': 'Recommendation system unavailable — network data missing'}), 500
 
-        username = username.strip()
-        platform = platform.strip().lower()
-        logger.info(f"Processing recommendation request for: {username} (platform: {platform})")
+    user_openings, user_rating, platform_used = None, None, None
 
-        # Get recommendation engine
-        engine = get_recommendation_engine()
-        if engine is None:
-            logger.error("Recommendation engine not available")
-            return jsonify({
-                "error": "Recommendation system not available. The network data files are missing. Please contact the administrator."
-            }), 500
-
-        # Fetch user games based on platform
-        user_openings = None
-        user_rating = None
-        platform_used = None
-
-        if platform == 'lichess':
-            # Try Lichess only
-            pgn_data = fetch_games(username, num_games=100)
-            if pgn_data:
-                user_openings, user_rating = extract_openings_and_rating(pgn_data, username)
-                platform_used = 'Lichess'
-        elif platform == 'chesscom' or platform == 'chess.com':
-            # Try Chess.com only
-            games_data = fetch_games_chesscom(username, num_games=100)
-            if games_data:
-                user_openings, user_rating = extract_openings_and_rating_chesscom(games_data, username)
-                platform_used = 'Chess.com'
+    if platform == 'lichess':
+        raw = _fetch_lichess(username)
+        if raw:
+            user_openings, user_rating = _parse_lichess(raw, username)
+            platform_used = 'Lichess'
+    elif platform in ('chesscom', 'chess.com'):
+        raw = _fetch_chesscom(username)
+        if raw:
+            user_openings, user_rating = _parse_chesscom(raw, username)
+            platform_used = 'Chess.com'
+    else:
+        raw = _fetch_lichess(username)
+        if raw:
+            user_openings, user_rating = _parse_lichess(raw, username)
+            platform_used = 'Lichess'
         else:
-            # Auto-detect: Try Lichess first, then Chess.com
-            pgn_data = fetch_games(username, num_games=100)
-            if pgn_data:
-                user_openings, user_rating = extract_openings_and_rating(pgn_data, username)
-                platform_used = 'Lichess'
-            else:
-                logger.info(f"User not found on Lichess, trying Chess.com...")
-                games_data = fetch_games_chesscom(username, num_games=100)
-                if games_data:
-                    user_openings, user_rating = extract_openings_and_rating_chesscom(games_data, username)
-                    platform_used = 'Chess.com'
+            raw = _fetch_chesscom(username)
+            if raw:
+                user_openings, user_rating = _parse_chesscom(raw, username)
+                platform_used = 'Chess.com'
 
-        # Check if we got any data
-        if not user_openings or len(user_openings) == 0:
-            # Provide helpful error message based on platform
-            if platform_used == 'Chess.com':
-                return jsonify({
-                    "error": f"No opening data found for Chess.com user '{username}'. Chess.com doesn't store opening information for older games. Try using your Lichess account instead, or play some recent games on Chess.com."
-                }), 400
-            elif platform in ['lichess', 'chesscom', 'chess.com']:
-                return jsonify({
-                    "error": f"Could not fetch games for user '{username}' on {platform.capitalize()}. Please check the username is correct."
-                }), 404
-            else:
-                return jsonify({
-                    "error": f"Could not fetch games for user '{username}' on either Lichess or Chess.com. Please check the username is correct."
-                }), 404
-
-        logger.info(f"User openings from {platform_used}: {user_openings[:5]}... (total: {len(user_openings)})")
-        logger.info(f"User rating: {user_rating}")
-
-        # Generate recommendations using new engine
-        recommendations = engine.recommend(
-            user_openings=user_openings,
-            user_rating=user_rating,
-            top_k=10,
-            include_explanations=True
-        )
-
-        if not recommendations:
-            logger.warning("No recommendations generated")
+    if not user_openings:
+        if platform_used == 'Chess.com':
             return jsonify({
-                "error": "Could not generate recommendations. Your openings may not be in the database."
+                'error': (
+                    f"No opening data for Chess.com user '{username}'. "
+                    "Chess.com only stores openings for recent games — try Lichess instead."
+                )
             }), 400
+        if platform in ('lichess', 'chesscom', 'chess.com'):
+            return jsonify({
+                'error': f"Could not fetch games for '{username}' on {platform}. Check the username."
+            }), 404
+        return jsonify({
+            'error': f"Could not find '{username}' on Lichess or Chess.com. Check the username."
+        }), 404
 
-        # Calculate user complexity for comparison
-        user_complexity = engine.estimate_user_complexity(user_openings, user_rating)
+    recs = engine.recommend(user_openings, user_rating, top_k=10)
+    if not recs:
+        return jsonify({'error': "No recommendations — your openings may not be in the database."}), 400
 
-        # Format recommendations for response with detailed explanation cards
-        formatted_recommendations = []
-        for opening, score, explanation in recommendations:
-            # Get opening data
-            opening_data = {}
-            if opening in _relatedness_network.nodes:
-                node_data = _relatedness_network.nodes[opening]
-                complexity = node_data.get('complexity', 0.5)
+    user_rarity = engine.estimate_rarity(user_openings, user_rating)
 
-                # Calculate complexity level label (NHEFC scale: mean=1.0, range=0.0003-52+)
-                if complexity < 0.5:
-                    complexity_label = "Beginner-friendly"
-                elif complexity < 1.5:
-                    complexity_label = "Intermediate"
-                elif complexity < 5.0:
-                    complexity_label = "Advanced"
-                else:
-                    complexity_label = "Expert"
-
-                # Find related openings (filter out invalid names)
-                related_openings = []
-                if opening in _relatedness_network:
-                    neighbors = list(_relatedness_network.neighbors(opening))
-                    # Filter out invalid opening names like "?"
-                    valid_neighbors = [n for n in neighbors if n and n != '?' and len(n) > 1]
-                    related_openings = valid_neighbors[:3]
-
-                # Calculate network connections
-                num_connections = _relatedness_network.degree(opening)
-
-                opening_data = {
-                    'opening': opening,
-                    'score': round(score, 3),
-                    'explanation': explanation,
-                    'complexity': round(complexity, 3),
-                    'complexity_label': complexity_label,
-                    'complexity_match': round(abs(complexity - user_complexity), 3),
-                    'is_good_match': bool(abs(complexity - user_complexity) < 1.5),  # NHEFC scale threshold
-                    'related_openings': related_openings,
-                    'num_connections': int(num_connections)
-                }
-            else:
-                opening_data = {
-                    'opening': opening,
-                    'score': round(score, 3),
-                    'explanation': explanation,
-                    'complexity': None,
-                    'complexity_label': 'Unknown',
-                    'complexity_match': None,
-                    'is_good_match': False,
-                    'related_openings': [],
-                    'num_connections': 0
-                }
-
-            formatted_recommendations.append(opening_data)
-
-        # Get top explanation
-        top_explanation = recommendations[0][2] if recommendations else "No recommendations available"
-
-        # Additional stats
-        response = {
-            'recommendations': formatted_recommendations,
-            'top_result_explanation': top_explanation,
-            'platform': platform_used,
-            'user_stats': {
-                'games_analyzed': len(user_openings),
-                'unique_openings': len(set(user_openings)),
-                'rating': user_rating,
-                'complexity_level': round(user_complexity, 3),
-                'complexity_label': (
-                    "Beginner" if user_complexity < 0.5 else
-                    "Intermediate" if user_complexity < 1.5 else
-                    "Advanced" if user_complexity < 5.0 else
-                    "Expert"
-                ),
-                'platform': platform_used
+    def format_rec(opening, score, explanation, n_supporting):
+        if opening not in _network.nodes:
+            return {
+                'opening': opening,
+                'score': round(score, 3),
+                'explanation': explanation,
+                'rarity': None,
+                'rarity_label': 'Unknown',
+                'n_supporting': n_supporting,
+                'related_openings': [],
+                'num_connections': 0,
             }
+        rarity = _network.nodes[opening].get('complexity', 0.5)
+        neighbors = sorted(
+            (
+                (n, _network[opening][n].get('z_score', 0))
+                for n in _network.neighbors(opening)
+                if n and len(n) > 1
+            ),
+            key=lambda x: -x[1],
+        )
+        return {
+            'opening': opening,
+            'score': round(score, 3),
+            'explanation': explanation,
+            'rarity': round(rarity, 4),
+            'rarity_label': _rarity_label(rarity),
+            'n_supporting': n_supporting,
+            'related_openings': [n for n, _ in neighbors[:3]],
+            'num_connections': int(_network.degree(opening)),
         }
 
-        logger.info(f"Successfully generated {len(recommendations)} recommendations")
-
-        return jsonify(response)
-
-    except Exception as e:
-        logger.error(f"Error processing recommendation: {e}", exc_info=True)
-        return jsonify({
-            "error": "An internal error occurred. Please try again later."
-        }), 500
+    return jsonify({
+        'recommendations': [format_rec(*r) for r in recs],
+        'top_result_explanation': recs[0][2],
+        'platform': platform_used,
+        'user_stats': {
+            'games_analyzed': len(user_openings),
+            'unique_openings': len(set(user_openings)),
+            'rating': user_rating,
+            'repertoire_style': _repertoire_style(user_rarity),
+            'platform': platform_used,
+        },
+    })
 
 
 @app.route('/health')
 def health():
-    """Health check endpoint."""
-    engine = get_recommendation_engine()
-
+    engine = get_engine()
     if engine is None:
-        return jsonify({"status": "unhealthy", "message": "Network not loaded"}), 503
-
+        return jsonify({'status': 'unhealthy', 'message': 'Network not loaded'}), 503
     return jsonify({
-        "status": "healthy",
-        "network_nodes": _relatedness_network.number_of_nodes() if _relatedness_network else 0,
-        "network_edges": _relatedness_network.number_of_edges() if _relatedness_network else 0
+        'status': 'healthy',
+        'network_nodes': _network.number_of_nodes(),
+        'network_edges': _network.number_of_edges(),
     })
 
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') == 'development'
-
-    logger.info(f"Starting Flask app on port {port}, debug={debug}")
     app.run(debug=debug, port=port, host='0.0.0.0')

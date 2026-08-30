@@ -9,11 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Lora', Georgia, serif;
@@ -44,9 +40,7 @@
             transition: opacity 0.3s;
         }
 
-        .site-title a:hover {
-            opacity: 0.6;
-        }
+        .site-title a:hover { opacity: 0.6; }
 
         .page-title {
             font-size: 2rem;
@@ -74,9 +68,7 @@
             transition: opacity 0.3s;
         }
 
-        .nav-link:hover {
-            opacity: 0.6;
-        }
+        .nav-link:hover { opacity: 0.6; }
 
         .container {
             max-width: 900px;
@@ -93,9 +85,7 @@
             font-style: italic;
         }
 
-        .form-container {
-            margin-bottom: 4rem;
-        }
+        .form-container { margin-bottom: 4rem; }
 
         #userForm {
             display: flex;
@@ -135,14 +125,8 @@
             text-transform: lowercase;
         }
 
-        button[type="submit"]:hover {
-            background: rgba(92, 124, 250, 0.9);
-        }
-
-        button[type="submit"]:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        button[type="submit"]:hover { background: rgba(92, 124, 250, 0.9); }
+        button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .platform-selector {
             display: flex;
@@ -163,9 +147,7 @@
             transition: color 0.3s;
         }
 
-        .platform-option:hover {
-            color: rgba(92, 124, 250, 0.9);
-        }
+        .platform-option:hover { color: rgba(92, 124, 250, 0.9); }
 
         .platform-option input[type="radio"] {
             width: 16px;
@@ -226,9 +208,7 @@
             gap: 2rem;
         }
 
-        .stat-item {
-            text-align: center;
-        }
+        .stat-item { text-align: center; }
 
         .stat-value {
             font-size: 2rem;
@@ -255,9 +235,7 @@
             line-height: 1.8;
         }
 
-        #recommendations {
-            list-style: none;
-        }
+        #recommendations { list-style: none; }
 
         .recommendation-item {
             background: #fafafa;
@@ -278,7 +256,7 @@
             align-items: baseline;
             margin-bottom: 1rem;
             flex-wrap: wrap;
-            gap: 1rem;
+            gap: 0.75rem;
         }
 
         .opening-name {
@@ -288,75 +266,126 @@
             letter-spacing: 0.02em;
         }
 
-        .opening-score {
-            font-size: 0.9rem;
-            color: rgba(92, 124, 250, 0.7);
-            letter-spacing: 0.1em;
-            font-style: italic;
-        }
-
-        .opening-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 1.5rem;
-            margin: 1.5rem 0;
-            padding: 1.5rem;
-            background: rgba(92, 124, 250, 0.03);
-        }
-
-        .detail-item {
-            text-align: center;
-        }
-
-        .detail-label {
+        .rarity-badge {
+            display: inline-block;
+            padding: 0.2rem 0.65rem;
             font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 600;
+            font-style: normal;
+        }
+
+        .rarity-very-popular { background: rgba(123, 165, 145, 0.15); color: #4a8a6a; }
+        .rarity-popular      { background: rgba(92, 124, 250, 0.12); color: rgba(60, 100, 220, 0.9); }
+        .rarity-niche        { background: rgba(212, 165, 116, 0.2); color: #a07040; }
+        .rarity-obscure      { background: rgba(180, 80, 80, 0.12); color: #a04040; }
+        .rarity-unknown      { background: rgba(150, 150, 150, 0.15); color: #888; }
+
+        /* Board and moves section */
+        .opening-body {
+            display: flex;
+            gap: 2rem;
+            margin: 1.5rem 0;
+            align-items: flex-start;
+        }
+
+        .board-container { flex-shrink: 0; }
+
+        .chess-board {
+            border-collapse: collapse;
+            font-size: 1.55rem;
+            line-height: 1;
+            border: 1px solid #ccc;
+        }
+
+        .chess-board td {
+            width: 32px;
+            height: 32px;
+            text-align: center;
+            vertical-align: middle;
+            padding: 0;
+        }
+
+        .sq-light { background: #f0d9b5; }
+        .sq-dark  { background: #b58863; }
+
+        .piece-w {
+            color: #fff;
+            text-shadow: 0 0 2px #000, 0 0 1px #000;
+        }
+
+        .piece-b { color: #1a1a1a; }
+
+        .board-coords {
+            display: flex;
+            flex-direction: column;
+            margin-top: 4px;
+        }
+
+        .opening-info { flex: 1; min-width: 0; }
+
+        .eco-label {
+            font-size: 0.75rem;
             color: #999;
             letter-spacing: 0.15em;
             text-transform: uppercase;
             margin-bottom: 0.5rem;
         }
 
-        .detail-value {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: rgba(92, 124, 250, 0.8);
+        .moves-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #444;
+            line-height: 1.7;
+            background: rgba(0, 0, 0, 0.03);
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            word-break: break-word;
         }
 
-        .complexity-expert {
-            color: #c9485b;
+        .outbound-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
         }
 
-        .complexity-advanced {
-            color: #d4a574;
-        }
-
-        .complexity-intermediate {
-            color: rgba(92, 124, 250, 0.8);
-        }
-
-        .complexity-beginner {
-            color: #7ba591;
-        }
-
-        .match-badge {
+        .outbound-link {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
-            font-size: 0.7rem;
-            border-radius: 20px;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            font-weight: 600;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.78rem;
+            color: rgba(92, 124, 250, 0.8);
+            border: 1px solid rgba(92, 124, 250, 0.3);
+            text-decoration: none;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+
+        .outbound-link:hover {
+            background: rgba(92, 124, 250, 0.08);
+            border-color: rgba(92, 124, 250, 0.6);
+        }
+
+        .meta-row {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            font-size: 0.8rem;
+            color: #888;
             margin-top: 0.5rem;
         }
 
-        .match-good {
-            background: rgba(123, 165, 145, 0.2);
-            color: #7ba591;
-        }
+        .meta-item strong { color: #555; }
 
-        .match-stretch {
-            background: rgba(212, 165, 116, 0.2);
-            color: #d4a574;
+        .opening-explanation {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            margin-top: 1rem;
+            font-style: italic;
+            border-top: 1px solid rgba(92, 124, 250, 0.1);
+            padding-top: 1rem;
         }
 
         .related-openings {
@@ -373,11 +402,7 @@
             margin-bottom: 0.75rem;
         }
 
-        .related-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
+        .related-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
         .related-tag {
             padding: 0.4rem 0.8rem;
@@ -391,14 +416,6 @@
         .related-tag:hover {
             background: rgba(92, 124, 250, 0.05);
             border-color: rgba(92, 124, 250, 0.3);
-        }
-
-        .opening-explanation {
-            color: #666;
-            font-size: 0.9rem;
-            line-height: 1.8;
-            margin-top: 1rem;
-            font-style: italic;
         }
 
         .error {
@@ -426,9 +443,7 @@
             transition: opacity 0.3s;
         }
 
-        .footer a:hover {
-            opacity: 0.6;
-        }
+        .footer a:hover { opacity: 0.6; }
 
         .methodology {
             margin-top: 1rem;
@@ -437,29 +452,15 @@
             letter-spacing: 0.05em;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container {
-                padding: 2rem 1rem;
-            }
-
-            .page-title {
-                font-size: 1.5rem;
-            }
-
-            .opening-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-            }
-
-            #userForm {
-                gap: 0.75rem;
-            }
+        @media (max-width: 640px) {
+            .container { padding: 2rem 1rem; }
+            .page-title { font-size: 1.5rem; }
+            .opening-header { flex-direction: column; align-items: flex-start; }
+            .stats-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+            #userForm { gap: 0.75rem; }
+            .opening-body { flex-direction: column; }
+            .chess-board { font-size: 1.35rem; }
+            .chess-board td { width: 28px; height: 28px; }
         }
     </style>
 </head>
@@ -469,14 +470,14 @@
             <a href="https://www.serialexperiment.ing/">serialexperiment.ing</a> · opening theory
         </div>
         <h1 class="page-title">chess opening recommendations</h1>
-        <p class="subtitle">personalized repertoire discovery through network analysis</p>
+        <p class="subtitle">find openings that fit the way you already play</p>
         <a href="/methodology" class="nav-link">view methodology →</a>
     </div>
 
     <div class="container">
         <p class="intro-text">
-            enter your username to receive opening recommendations<br>
-            based on economic fitness & complexity analysis
+            enter your username · we analyze your recent games<br>
+            and recommend openings adjacent to your current repertoire
         </p>
 
         <div class="form-container">
@@ -529,8 +530,8 @@
                     <div class="stat-label">rating</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="userComplexity">—</div>
-                    <div class="stat-label">skill level</div>
+                    <div class="stat-value" id="repertoireStyle">—</div>
+                    <div class="stat-label">opening style</div>
                 </div>
             </div>
         </div>
@@ -543,21 +544,221 @@
             <p>
                 <a href="/methodology">methodology</a> ·
                 <a href="https://www.nature.com/articles/s41598-023-31658-w" target="_blank">nature scientific reports</a> ·
-                economic fitness & complexity algorithm
+                bipartite network projection · BiCM z-score filtering
             </p>
             <p class="methodology">
-                z-score filtering · bipartite network projection · degree-based complexity
+                rarity scores (EFC) measure opening obscurity in the corpus, not difficulty
             </p>
         </div>
     </div>
 
     <script>
+        // ----- opening data (lazy-loaded) -----
+        let openingsData = null;
+
+        function loadOpeningsData() {
+            if (openingsData !== null) return Promise.resolve(openingsData);
+            return fetch('/static/openings_data.json')
+                .then(r => r.json())
+                .then(d => { openingsData = d; return d; })
+                .catch(() => { openingsData = {}; return {}; });
+        }
+
+        // Pre-fetch in the background so it's ready when results arrive
+        loadOpeningsData();
+
+        // ----- board rendering -----
+        const PIECES = {
+            K:'♔', Q:'♕', R:'♖', B:'♗', N:'♘', P:'♙',
+            k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟'
+        };
+
+        function parseFenPlacement(fen) {
+            const placement = fen.split(' ')[0];
+            const board = [];
+            for (const rank of placement.split('/')) {
+                const row = [];
+                for (const ch of rank) {
+                    if (/\d/.test(ch)) {
+                        for (let i = 0; i < parseInt(ch); i++) row.push('');
+                    } else {
+                        row.push(ch);
+                    }
+                }
+                board.push(row);
+            }
+            return board;
+        }
+
+        // Apply SAN moves from a PGN string to the starting position
+        // Returns the resulting FEN piece-placement string, or null on error.
+        // We use a minimal move-application approach: only what we need for display.
+        function pgnToFen(pgn) {
+            // Minimal chess state: just piece positions for rendering
+            // We use a simple array representation
+            let board = [
+                ['r','n','b','q','k','b','n','r'],
+                ['p','p','p','p','p','p','p','p'],
+                ['','','','','','','',''],
+                ['','','','','','','',''],
+                ['','','','','','','',''],
+                ['','','','','','','',''],
+                ['P','P','P','P','P','P','P','P'],
+                ['R','N','B','Q','K','B','N','R']
+            ];
+
+            const fileLetter = {'a':0,'b':1,'c':2,'d':3,'e':4,'f':5,'g':6,'h':7};
+
+            function applyMove(move, isWhite) {
+                move = move.replace(/[+#!?]/g, '');
+                const side = isWhite ? 1 : -1;
+
+                // Castling
+                if (move === 'O-O' || move === '0-0') {
+                    const rank = isWhite ? 7 : 0;
+                    board[rank][4] = ''; board[rank][7] = '';
+                    board[rank][6] = isWhite ? 'K' : 'k';
+                    board[rank][5] = isWhite ? 'R' : 'r';
+                    return;
+                }
+                if (move === 'O-O-O' || move === '0-0-0') {
+                    const rank = isWhite ? 7 : 0;
+                    board[rank][4] = ''; board[rank][0] = '';
+                    board[rank][2] = isWhite ? 'K' : 'k';
+                    board[rank][3] = isWhite ? 'R' : 'r';
+                    return;
+                }
+
+                // Promotion
+                let promoChar = '';
+                if (move.includes('=')) {
+                    promoChar = isWhite ? move.slice(-1).toUpperCase() : move.slice(-1).toLowerCase();
+                    move = move.replace(/=.*$/, '');
+                }
+
+                const isCapture = move.includes('x');
+                move = move.replace('x', '');
+
+                let piece = 'P';
+                if (/^[KQRBN]/.test(move)) { piece = move[0]; move = move.slice(1); }
+                if (!isWhite) piece = piece.toLowerCase();
+
+                // Destination square
+                const destFile = fileLetter[move.slice(-2, -1)];
+                const destRank = 8 - parseInt(move.slice(-1));
+                const disambig = move.slice(0, -2);
+
+                // Find source piece
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        if (board[r][c] !== piece) continue;
+
+                        // Disambiguation
+                        if (disambig) {
+                            if (disambig in fileLetter && c !== fileLetter[disambig]) continue;
+                            else if (/\d/.test(disambig) && r !== 8 - parseInt(disambig)) continue;
+                        }
+
+                        // Check if this piece can legally reach dest (basic movement only)
+                        const dr = destRank - r, dc = destFile - c;
+                        const pUpper = piece.toUpperCase();
+                        let canMove = false;
+
+                        if (pUpper === 'P') {
+                            const dir = isWhite ? -1 : 1;
+                            if (!isCapture && dc === 0 && (dr === dir || (dr === 2*dir && r === (isWhite?6:1)))) canMove = true;
+                            if (isCapture && dr === dir && Math.abs(dc) === 1) canMove = true;
+                        } else if (pUpper === 'N') {
+                            if (Math.abs(dr) === 2 && Math.abs(dc) === 1) canMove = true;
+                            if (Math.abs(dr) === 1 && Math.abs(dc) === 2) canMove = true;
+                        } else if (pUpper === 'B') {
+                            if (Math.abs(dr) === Math.abs(dc)) canMove = true;
+                        } else if (pUpper === 'R') {
+                            if (dr === 0 || dc === 0) canMove = true;
+                        } else if (pUpper === 'Q') {
+                            if (dr === 0 || dc === 0 || Math.abs(dr) === Math.abs(dc)) canMove = true;
+                        } else if (pUpper === 'K') {
+                            if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) canMove = true;
+                        }
+
+                        if (canMove) {
+                            board[r][c] = '';
+                            board[destRank][destFile] = promoChar || piece;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            try {
+                // Strip move numbers and annotations
+                const tokens = pgn
+                    .replace(/\{[^}]*\}/g, '')
+                    .replace(/\([^)]*\)/g, '')
+                    .split(/\s+/)
+                    .filter(t => t && !/^\d+\./.test(t) && !/^(1-0|0-1|1\/2)/.test(t));
+
+                let isWhite = true;
+                for (const token of tokens) {
+                    if (!token) continue;
+                    applyMove(token, isWhite);
+                    isWhite = !isWhite;
+                }
+            } catch(e) {
+                return null;
+            }
+
+            // Encode board back to FEN piece placement
+            return board.map(row => {
+                let fen = '', empty = 0;
+                for (const sq of row) {
+                    if (!sq) { empty++; }
+                    else { if (empty) { fen += empty; empty = 0; } fen += sq; }
+                }
+                if (empty) fen += empty;
+                return fen;
+            }).join('/');
+        }
+
+        function renderBoard(fenPlacement) {
+            const board = parseFenPlacement(fenPlacement);
+            let html = '<table class="chess-board">';
+            for (let r = 0; r < 8; r++) {
+                html += '<tr>';
+                for (let c = 0; c < 8; c++) {
+                    const isLight = (r + c) % 2 === 0;
+                    const sq = isLight ? 'sq-light' : 'sq-dark';
+                    const p = board[r][c];
+                    const cls = p ? (p === p.toUpperCase() ? 'piece-w' : 'piece-b') : '';
+                    html += `<td class="${sq}"><span class="${cls}">${PIECES[p] || ''}</span></td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            return html;
+        }
+
+        // ----- link helpers -----
+        function lichessOpeningUrl(name) {
+            const slug = name.replace(/[^a-zA-Z0-9\s]/g, ' ').trim().replace(/\s+/g, '_');
+            return 'https://lichess.org/opening/' + slug;
+        }
+
+        function chessableUrl(name) {
+            return 'https://www.chessable.com/courses/search/?q=' + encodeURIComponent(name);
+        }
+
+        function youtubeUrl(name) {
+            return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name + ' chess opening');
+        }
+
+        // ----- form submission -----
         $(document).ready(function() {
             $('#userForm').on('submit', function(e) {
                 e.preventDefault();
 
-                var username = $('#username').val().trim();
-                var platform = $('input[name="platform"]:checked').val();
+                const username = $('#username').val().trim();
+                const platform = $('input[name="platform"]:checked').val();
                 if (!username) return;
 
                 // Reset UI
@@ -568,15 +769,15 @@
                 $('#loading').show();
                 $('#submitBtn').prop('disabled', true);
 
-                // Make request
-                $.ajax({
+                // Fetch recommendations and openings data in parallel
+                const recsPromise = $.ajax({
                     url: '/recommend',
                     type: 'POST',
-                    data: {
-                        username: username,
-                        platform: platform
-                    },
-                    success: function(data) {
+                    data: { username, platform }
+                });
+
+                Promise.all([recsPromise, loadOpeningsData()])
+                    .then(([data]) => {
                         $('#loading').hide();
                         $('#submitBtn').prop('disabled', false);
 
@@ -585,91 +786,111 @@
                             return;
                         }
 
-                        // Display user stats
+                        // User stats
                         if (data.user_stats) {
-                            $('#gamesAnalyzed').text(data.user_stats.games_analyzed || '—');
-                            $('#uniqueOpenings').text(data.user_stats.unique_openings || '—');
-                            $('#userRating').text(data.user_stats.rating || 'unrated');
-                            $('#userComplexity').text(data.user_stats.complexity_label || '—');
+                            const s = data.user_stats;
+                            $('#gamesAnalyzed').text(s.games_analyzed || '—');
+                            $('#uniqueOpenings').text(s.unique_openings || '—');
+                            $('#userRating').text(s.rating || 'unrated');
+                            $('#repertoireStyle').text(s.repertoire_style || '—');
                             $('#userStats').show();
                         }
 
-                        // Display top explanation
                         if (data.top_result_explanation) {
                             $('#topExplanation').text(data.top_result_explanation).show();
                         }
 
-                        // Display recommendations
-                        if (data.recommendations && data.recommendations.length > 0) {
-                            data.recommendations.forEach(function(rec, index) {
-                                var complexityClass = 'complexity-' + (rec.complexity_label || 'intermediate').toLowerCase().replace('-', '');
-                                // Adaptive precision: show more decimals for small values
-                                var complexityText = rec.complexity ?
-                                    (rec.complexity < 0.01 ? rec.complexity.toFixed(4) :
-                                     rec.complexity < 1 ? rec.complexity.toFixed(3) :
-                                     rec.complexity.toFixed(2)) : 'n/a';
-                                var complexityLabel = rec.complexity_label || 'Unknown';
-
-                                // Match badge
-                                var matchBadge = '';
-                                if (rec.is_good_match) {
-                                    matchBadge = '<span class="match-badge match-good">Good Match</span>';
-                                } else if (rec.complexity_match !== null && rec.complexity_match < 0.3) {
-                                    matchBadge = '<span class="match-badge match-stretch">Stretch Goal</span>';
-                                }
-
-                                // Related openings
-                                var relatedHtml = '';
-                                if (rec.related_openings && rec.related_openings.length > 0) {
-                                    relatedHtml = `
-                                        <div class="related-openings">
-                                            <div class="related-title">similar openings in network</div>
-                                            <div class="related-list">
-                                                ${rec.related_openings.map(o => '<span class="related-tag">' + o + '</span>').join('')}
-                                            </div>
-                                        </div>
-                                    `;
-                                }
-
-                                var listItem = $('<li>').addClass('recommendation-item').html(`
-                                    <div class="opening-header">
-                                        <div class="opening-name">${index + 1}. ${rec.opening}</div>
-                                        <div class="opening-score">score: ${rec.score.toFixed(3)}</div>
-                                    </div>
-                                    <div class="opening-details">
-                                        <div class="detail-item">
-                                            <div class="detail-label">complexity</div>
-                                            <div class="detail-value ${complexityClass}">${complexityText}</div>
-                                            <div class="stat-label" style="margin-top: 0.5rem;">${complexityLabel}</div>
-                                            ${matchBadge}
-                                        </div>
-                                        <div class="detail-item">
-                                            <div class="detail-label">network</div>
-                                            <div class="detail-value">${rec.num_connections || 0}</div>
-                                            <div class="stat-label" style="margin-top: 0.5rem;">connections</div>
-                                        </div>
-                                    </div>
-                                    ${rec.explanation ? '<div class="opening-explanation">' + rec.explanation + '</div>' : ''}
-                                    ${relatedHtml}
-                                `);
-
-                                $('#recommendations').append(listItem);
-                            });
-                        } else {
+                        if (!data.recommendations || data.recommendations.length === 0) {
                             $('#error').text('no recommendations available · try playing more games').show();
+                            return;
                         }
-                    },
-                    error: function(xhr) {
+
+                        data.recommendations.forEach((rec, index) => {
+                            const od = openingsData && openingsData[rec.opening];
+
+                            // Rarity badge
+                            const rarityKey = (rec.rarity_label || 'unknown').toLowerCase().replace(' ', '-');
+                            const rarityBadge = `<span class="rarity-badge rarity-${rarityKey}">${rec.rarity_label || 'unknown'}</span>`;
+
+                            // Board
+                            let boardHtml = '';
+                            let movesHtml = '';
+                            let ecoHtml = '';
+                            if (od) {
+                                ecoHtml = `<div class="eco-label">${od.eco}</div>`;
+                                movesHtml = `<div class="moves-text">${od.pgn}</div>`;
+                                try {
+                                    const fenPlacement = pgnToFen(od.pgn);
+                                    if (fenPlacement) {
+                                        boardHtml = renderBoard(fenPlacement);
+                                    }
+                                } catch(e) {}
+                            }
+
+                            // Meta row
+                            const n = rec.n_supporting || 1;
+                            const nLabel = n === 1 ? '1 of your openings' : `${n} of your openings`;
+                            const metaHtml = `
+                                <div class="meta-row">
+                                    <span class="meta-item">matched by <strong>${nLabel}</strong></span>
+                                    <span class="meta-item"><strong>${rec.num_connections}</strong> network connections</span>
+                                </div>`;
+
+                            // Outbound links
+                            const linksHtml = `
+                                <div class="outbound-links">
+                                    <a href="${lichessOpeningUrl(rec.opening)}" target="_blank" class="outbound-link">explore on lichess ↗</a>
+                                    <a href="${chessableUrl(rec.opening)}" target="_blank" class="outbound-link">courses on chessable ↗</a>
+                                    <a href="${youtubeUrl(rec.opening)}" target="_blank" class="outbound-link">youtube ↗</a>
+                                </div>`;
+
+                            // Related openings
+                            let relatedHtml = '';
+                            if (rec.related_openings && rec.related_openings.length > 0) {
+                                relatedHtml = `
+                                    <div class="related-openings">
+                                        <div class="related-title">similar in network</div>
+                                        <div class="related-list">
+                                            ${rec.related_openings.map(o => `<span class="related-tag">${o}</span>`).join('')}
+                                        </div>
+                                    </div>`;
+                            }
+
+                            // Explanation
+                            const explHtml = rec.explanation
+                                ? `<div class="opening-explanation">${rec.explanation}</div>`
+                                : '';
+
+                            const item = $('<li>').addClass('recommendation-item').html(`
+                                <div class="opening-header">
+                                    <div class="opening-name">${index + 1}. ${rec.opening}</div>
+                                    ${rarityBadge}
+                                </div>
+                                <div class="opening-body">
+                                    ${boardHtml ? `<div class="board-container">${boardHtml}</div>` : ''}
+                                    <div class="opening-info">
+                                        ${ecoHtml}
+                                        ${movesHtml}
+                                        ${linksHtml}
+                                        ${metaHtml}
+                                    </div>
+                                </div>
+                                ${explHtml}
+                                ${relatedHtml}
+                            `);
+
+                            $('#recommendations').append(item);
+                        });
+                    })
+                    .catch(xhr => {
                         $('#loading').hide();
                         $('#submitBtn').prop('disabled', false);
-
-                        var errorMsg = 'an error occurred processing your request';
+                        let errorMsg = 'an error occurred processing your request';
                         if (xhr.responseJSON && xhr.responseJSON.error) {
                             errorMsg = xhr.responseJSON.error;
                         }
                         $('#error').text(errorMsg).show();
-                    }
-                });
+                    });
             });
         });
     </script>
