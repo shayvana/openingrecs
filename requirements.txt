@@ -1,17 +1,8 @@
-# Production dependencies for Vercel deployment
-# Only runtime dependencies - no build/dev tools
-# For full dependencies (local development), see requirements-full.txt
+# Production dependencies for Vercel deployment — runtime only.
+# The recommendation engine and network loader use only stdlib (math, statistics, json).
+# Pipeline dependencies (bicm, numpy, networkx, chess) are in requirements-pipeline.txt.
 
-# Web framework
 Flask==3.0.0
 Werkzeug==3.0.1
 Flask-Cors==4.0.0
-
-# Network analysis (only dependency with C extensions)
-networkx==3.2.1
-
-# Minimal numpy (required by networkx for some operations)
-numpy==1.26.2
-
-# HTTP requests (for Lichess API)
 requests==2.31.0

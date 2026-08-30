@@ -1,15 +1,14 @@
 import json
 import logging
 import os
-import pickle
 import sys
 
 import requests
 from flask import Flask, jsonify, render_template, request
 
-# Add this file's directory to sys.path so recommendation_engine_v2 is importable
-# both when run directly (python3 app/app.py) and via Vercel's Python builder.
+# Allow both `python3 app/app.py` (dev) and Vercel's Python builder to find modules.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from network import ChessNetwork
 from recommendation_engine_v2 import RecommendationEngine
 
 logging.basicConfig(
@@ -20,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
-_network = None
+_network: ChessNetwork | None = None
+_network_meta: dict = {}
 _engine: RecommendationEngine | None = None
 
 
@@ -55,39 +55,27 @@ def _repertoire_style(median_rarity: float) -> str:
 # ------------------------------------------------------------------
 
 def get_engine() -> RecommendationEngine | None:
-    """Load the network and build the recommendation engine on first call."""
-    global _network, _engine
+    """Load the network from JSON and build the recommendation engine on first call."""
+    global _network, _network_meta, _engine
     if _engine is not None:
         return _engine
 
     try:
-        network_path = 'data/relatedness_network_v2.pkl'
+        network_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'network.json'
+        )
         if not os.path.exists(network_path):
             logger.error("Network file not found: %s", network_path)
             return None
 
-        with open(network_path, 'rb') as f:
-            _network = pickle.load(f)
-
-        if '?' in _network:
-            _network.remove_node('?')
-
-        metadata_path = 'data/relatedness_network_v2_metadata.pkl'
-        if os.path.exists(metadata_path):
-            with open(metadata_path, 'rb') as f:
-                metadata = pickle.load(f)
-            rarity_scores = metadata.get('opening_complexity', {})
-        else:
-            logger.warning("Metadata file not found; rarity scores will default to 1.0")
-            rarity_scores = {}
-
-        for node in _network.nodes():
-            _network.nodes[node]['complexity'] = rarity_scores.get(node, 1.0)
+        _network, _network_meta = ChessNetwork.from_json_with_meta(network_path)
+        _network.remove_node('?')
 
         logger.info(
-            "Network loaded: %d openings, %d edges",
+            "Network loaded: %d openings, %d edges (data: %s)",
             _network.number_of_nodes(),
             _network.number_of_edges(),
+            _network_meta.get('month', 'unknown'),
         )
         _engine = RecommendationEngine(_network)
         return _engine
@@ -119,26 +107,27 @@ def _fetch_lichess(username: str, num_games: int = 100) -> str | None:
         return None
 
 
-def _parse_lichess(ndjson: str, username: str) -> tuple[list[str], float | None]:
-    openings, ratings = [], []
+def _parse_lichess(ndjson: str, username: str) -> tuple[list[str], list[str], float | None]:
+    white_openings, black_openings, ratings = [], [], []
     username_lower = username.lower()
     for line in ndjson.strip().splitlines():
         if not line:
             continue
         try:
             game = json.loads(line)
-            if 'opening' in game and 'name' in game['opening']:
-                openings.append(game['opening']['name'])
+            opening_name = game.get('opening', {}).get('name')
             for color in ('white', 'black'):
                 player = game.get('players', {}).get(color, {})
                 if player.get('user', {}).get('name', '').lower() == username_lower:
                     if 'rating' in player:
                         ratings.append(player['rating'])
+                    if opening_name:
+                        (white_openings if color == 'white' else black_openings).append(opening_name)
                     break
         except json.JSONDecodeError:
             continue
     avg_rating = sum(ratings) / len(ratings) if ratings else None
-    return openings, avg_rating
+    return white_openings, black_openings, avg_rating
 
 
 def _fetch_chesscom(username: str, num_games: int = 100) -> list | None:
@@ -174,27 +163,29 @@ def _fetch_chesscom(username: str, num_games: int = 100) -> list | None:
         return None
 
 
-def _parse_chesscom(games: list, username: str) -> tuple[list[str], float | None]:
-    openings, ratings = [], []
+def _parse_chesscom(games: list, username: str) -> tuple[list[str], list[str], float | None]:
+    white_openings, black_openings, ratings = [], [], []
     username_lower = username.lower()
     for game in games:
         try:
             eco_url = game.get('eco', '')
-            if '/openings/' in eco_url:
-                slug = eco_url.split('/openings/')[-1].split('?')[0]
-                name = slug.replace('-', ' ').strip()
-                if name and name.lower() not in ('undefined', 'unknown'):
-                    openings.append(name)
+            if '/openings/' not in eco_url:
+                continue
+            slug = eco_url.split('/openings/')[-1].split('?')[0]
+            name = slug.replace('-', ' ').strip()
+            if not name or name.lower() in ('undefined', 'unknown'):
+                continue
             for color in ('white', 'black'):
                 side = game.get(color, {})
                 if side.get('username', '').lower() == username_lower:
                     if 'rating' in side:
                         ratings.append(side['rating'])
+                    (white_openings if color == 'white' else black_openings).append(name)
                     break
         except (KeyError, AttributeError):
             continue
     avg_rating = sum(ratings) / len(ratings) if ratings else None
-    return openings, avg_rating
+    return white_openings, black_openings, avg_rating
 
 
 # ------------------------------------------------------------------
@@ -214,7 +205,7 @@ def methodology():
 @app.route('/recommend', methods=['POST'])
 def recommend():
     form = request.form
-    body = request.json or {}
+    body = request.get_json(silent=True) or {}
     username = (form.get('username') or body.get('username', '')).strip()
     platform = (form.get('platform') or body.get('platform', 'auto')).strip().lower()
 
@@ -225,30 +216,34 @@ def recommend():
     if engine is None:
         return jsonify({'error': 'Recommendation system unavailable — network data missing'}), 500
 
-    user_openings, user_rating, platform_used = None, None, None
+    white_openings: list[str] = []
+    black_openings: list[str] = []
+    user_rating: float | None = None
+    platform_used: str | None = None
 
     if platform == 'lichess':
         raw = _fetch_lichess(username)
         if raw:
-            user_openings, user_rating = _parse_lichess(raw, username)
+            white_openings, black_openings, user_rating = _parse_lichess(raw, username)
             platform_used = 'Lichess'
     elif platform in ('chesscom', 'chess.com'):
         raw = _fetch_chesscom(username)
         if raw:
-            user_openings, user_rating = _parse_chesscom(raw, username)
+            white_openings, black_openings, user_rating = _parse_chesscom(raw, username)
             platform_used = 'Chess.com'
     else:
         raw = _fetch_lichess(username)
         if raw:
-            user_openings, user_rating = _parse_lichess(raw, username)
+            white_openings, black_openings, user_rating = _parse_lichess(raw, username)
             platform_used = 'Lichess'
         else:
             raw = _fetch_chesscom(username)
             if raw:
-                user_openings, user_rating = _parse_chesscom(raw, username)
+                white_openings, black_openings, user_rating = _parse_chesscom(raw, username)
                 platform_used = 'Chess.com'
 
-    if not user_openings:
+    all_openings = white_openings + black_openings
+    if not all_openings:
         if platform_used == 'Chess.com':
             return jsonify({
                 'error': (
@@ -264,11 +259,13 @@ def recommend():
             'error': f"Could not find '{username}' on Lichess or Chess.com. Check the username."
         }), 404
 
-    recs = engine.recommend(user_openings, user_rating, top_k=10)
-    if not recs:
+    white_recs = engine.recommend(white_openings, user_rating, top_k=5) if white_openings else []
+    black_recs = engine.recommend(black_openings, user_rating, top_k=5) if black_openings else []
+
+    if not white_recs and not black_recs:
         return jsonify({'error': "No recommendations — your openings may not be in the database."}), 400
 
-    user_rarity = engine.estimate_rarity(user_openings, user_rating)
+    user_rarity = engine.estimate_rarity(all_openings, user_rating)
 
     def format_rec(opening, score, explanation, n_supporting):
         if opening not in _network.nodes:
@@ -303,12 +300,18 @@ def recommend():
         }
 
     return jsonify({
-        'recommendations': [format_rec(*r) for r in recs],
-        'top_result_explanation': recs[0][2],
-        'platform': platform_used,
+        'white': {
+            'recommendations': [format_rec(*r) for r in white_recs],
+            'games': len(white_openings),
+            'unique_openings': len(set(white_openings)),
+        },
+        'black': {
+            'recommendations': [format_rec(*r) for r in black_recs],
+            'games': len(black_openings),
+            'unique_openings': len(set(black_openings)),
+        },
         'user_stats': {
-            'games_analyzed': len(user_openings),
-            'unique_openings': len(set(user_openings)),
+            'total_games': len(all_openings),
             'rating': user_rating,
             'repertoire_style': _repertoire_style(user_rarity),
             'platform': platform_used,
@@ -325,6 +328,9 @@ def health():
         'status': 'healthy',
         'network_nodes': _network.number_of_nodes(),
         'network_edges': _network.number_of_edges(),
+        'data_month': _network_meta.get('month'),
+        'built_at': _network_meta.get('built_at'),
+        'games_processed': _network_meta.get('games_processed'),
     })
 
 

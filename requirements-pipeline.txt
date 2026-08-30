@@ -1,0 +1,20 @@
+# Dependencies for the data pipeline (local + GitHub Actions only).
+# Not installed in the Vercel production environment.
+#
+# Install: pip install -r requirements-pipeline.txt
+
+# Streaming decompression of Lichess .pgn.zst dumps
+zstandard==0.22.0
+
+# PGN parsing
+python-chess==1.999
+
+# Bipartite Configuration Model (BiCM) z-score filtering
+bicm==3.1.1
+
+# Numerical computation (BiCM and EFC)
+numpy==1.26.2
+scipy==1.11.4
+
+# Progress display
+tqdm==4.66.1

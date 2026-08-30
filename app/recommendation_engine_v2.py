@@ -1,11 +1,16 @@
 import logging
+import math
+import re
 from collections import defaultdict
+from statistics import median
 from typing import Dict, List, Optional, Tuple
 
-import networkx as nx
-import numpy as np
-
 logger = logging.getLogger(__name__)
+
+# Matches trailing Chess.com move-annotation suffixes like "...6.Nc3 Be7" or "2.g3"
+_MOVE_SUFFIX_RE = re.compile(r'(\.\.\.|(?:\s+\d+\.\S+))\s*.*$')
+# Characters to strip when doing fuzzy matching (apostrophes, curly quotes, hyphens)
+_FUZZY_STRIP_RE = re.compile(r"['’\-]")
 
 
 def normalize_opening(name: str) -> str:
@@ -28,7 +33,7 @@ class RecommendationEngine:
 
     def __init__(
         self,
-        network: nx.Graph,
+        network,
         rarity_weight: float = 0.3,
         similarity_weight: float = 0.4,
         popularity_weight: float = 0.2,
@@ -43,6 +48,13 @@ class RecommendationEngine:
         }
         total = sum(raw.values())
         self.weights = {k: v / total for k, v in raw.items()}
+
+        # Pre-build a fuzzy lookup: stripped-lowercase node name → actual node name.
+        # Used by _to_network_node to handle Chess.com naming divergences.
+        self._node_lookup: Dict[str, str] = {
+            _FUZZY_STRIP_RE.sub('', node.lower()): node
+            for node in network.nodes()
+        }
         logger.info("RecommendationEngine ready (%d openings)", network.number_of_nodes())
 
     # ------------------------------------------------------------------
@@ -59,14 +71,14 @@ class RecommendationEngine:
         Falls back to a rating-derived estimate when none of their openings
         appear in the network.
         """
-        normalized = [normalize_opening(o) for o in user_openings]
+        nodes = [self._to_network_node(o) for o in user_openings]
         scores = [
-            self.network.nodes[o].get('complexity', 1.0)
-            for o in normalized
-            if o in self.network.nodes
+            self.network.nodes[n].get('complexity', 1.0)
+            for n in nodes
+            if n is not None
         ]
         if scores:
-            return float(np.median(scores))
+            return float(median(scores))
         if user_rating:
             return (user_rating - 1000) / 1000
         return 1.0
@@ -108,6 +120,39 @@ class RecommendationEngine:
         ]
 
     # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _to_network_node(self, opening: str) -> Optional[str]:
+        """
+        Map any opening name to a network node, tolerating variation detail.
+
+        Handles:
+        - Lichess colon-style:   "French Defense: Classical Variation" → "French Defense"
+        - Chess.com move suffix: "Italian Game...6.Nc3 Be7 7.O-O" → "Italian Game"
+        - Chess.com no colon:    "Sicilian Defense Najdorf Variation" → "Sicilian Defense"
+        - Fuzzy apostrophe:      "Queens Gambit Declined" → "Queen's Gambit Declined"
+        """
+        # Standard normalization (handles Lichess colon-style)
+        n = normalize_opening(opening)
+        if n in self.network.nodes:
+            return n
+
+        # Strip Chess.com move-annotation suffixes ("...6.Nc3 ..." or trailing " 2.g3")
+        n = _MOVE_SUFFIX_RE.sub('', n).strip()
+        if n in self.network.nodes:
+            return n
+
+        # Fuzzy prefix search: strip apostrophes/hyphens, lowercase, try shorter prefixes
+        words = _FUZZY_STRIP_RE.sub('', n.lower()).split()
+        for length in range(len(words), 0, -1):
+            key = ' '.join(words[:length])
+            if key in self._node_lookup:
+                return self._node_lookup[key]
+
+        return None
+
+    # ------------------------------------------------------------------
     # Internal scoring
     # ------------------------------------------------------------------
 
@@ -123,8 +168,8 @@ class RecommendationEngine:
         Returns (similarity_scores, n_supporting) where n_supporting[c]
         is the count of distinct user openings that connect to candidate c.
         """
-        normalized = [normalize_opening(o) for o in user_openings]
-        in_network = [o for o in normalized if o in self.network.nodes]
+        node_for = {o: self._to_network_node(o) for o in user_openings}
+        in_network = [node for node in node_for.values() if node is not None]
 
         if not in_network:
             logger.warning("None of the user's openings matched the network")
@@ -132,15 +177,16 @@ class RecommendationEngine:
 
         similarity: Dict[str, float] = defaultdict(float)
         supporting: Dict[str, set] = defaultdict(set)
+        in_network_set = set(in_network)
 
         for user_opening in in_network:
             for neighbor in self.network.neighbors(user_opening):
-                if neighbor in normalized or not neighbor or len(neighbor) <= 1:
+                if neighbor in in_network_set or not neighbor or len(neighbor) <= 1:
                     continue
                 edge = self.network[user_opening][neighbor]
                 z = edge.get('z_score', 1.0)
                 weight = edge.get('weight', 1.0)
-                similarity[neighbor] += weight * (1 + np.log(max(z, 1.0)))
+                similarity[neighbor] += weight * (1 + math.log(max(z, 1.0)))
                 supporting[neighbor].add(user_opening)
 
         if not similarity:
@@ -175,7 +221,7 @@ class RecommendationEngine:
             if distance <= tolerance:
                 scores[opening] = 1.0 - distance / tolerance
             else:
-                scores[opening] = float(np.exp(-(distance - tolerance)))
+                scores[opening] = math.exp(-(distance - tolerance))
         return scores
 
     def _score_by_popularity(self, candidates: Dict[str, float]) -> Dict[str, float]:
@@ -188,9 +234,9 @@ class RecommendationEngine:
             play_count = node.get('play_count', 0)
             diversity = node.get('player_diversity', 0)
             if play_count > 0 and diversity > 0:
-                raw[opening] = np.log(play_count + 1) * np.log(diversity + 1)
+                raw[opening] = math.log(play_count + 1) * math.log(diversity + 1)
             else:
-                raw[opening] = np.log(self.network.degree(opening) + 1)
+                raw[opening] = math.log(self.network.degree(opening) + 1)
 
         if not raw:
             return {}
@@ -213,12 +259,12 @@ class RecommendationEngine:
 
     def _explain(self, opening: str, user_openings: List[str]) -> str:
         """Build a one-sentence explanation for a recommended opening."""
-        normalized_user = [normalize_opening(o) for o in user_openings]
+        user_nodes = [self._to_network_node(o) for o in user_openings]
         connections = sorted(
             [
                 (u, self.network[u][opening].get('z_score', 1.0))
-                for u in normalized_user
-                if u in self.network and opening in self.network[u]
+                for u in user_nodes
+                if u and u in self.network and opening in self.network[u]
             ],
             key=lambda x: -x[1],
         )

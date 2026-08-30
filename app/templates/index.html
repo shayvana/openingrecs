@@ -235,8 +235,6 @@
             line-height: 1.8;
         }
 
-        #recommendations { list-style: none; }
-
         .recommendation-item {
             background: #fafafa;
             border: 1px solid rgba(92, 124, 250, 0.15);
@@ -418,6 +416,27 @@
             border-color: rgba(92, 124, 250, 0.3);
         }
 
+        .color-section { margin-bottom: 4rem; }
+
+        .color-section-header {
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: lowercase;
+            color: rgba(92, 124, 250, 0.8);
+            border-bottom: 1px solid rgba(92, 124, 250, 0.2);
+            padding-bottom: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .color-section-header .color-meta {
+            font-weight: 400;
+            color: #999;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            margin-left: 0.5rem;
+        }
+
         .error {
             background: rgba(201, 72, 91, 0.1);
             border-left: 3px solid #c9485b;
@@ -522,10 +541,6 @@
                     <div class="stat-label">games analyzed</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="uniqueOpenings">—</div>
-                    <div class="stat-label">unique openings</div>
-                </div>
-                <div class="stat-item">
                     <div class="stat-value" id="userRating">—</div>
                     <div class="stat-label">rating</div>
                 </div>
@@ -536,9 +551,21 @@
             </div>
         </div>
 
-        <div class="explanation" id="topExplanation"></div>
+        <div id="whiteSection" class="color-section" style="display:none">
+            <div class="color-section-header">
+                as white
+                <span class="color-meta" id="whiteSubtitle"></span>
+            </div>
+            <ul id="whiteRecs"></ul>
+        </div>
 
-        <ul id="recommendations"></ul>
+        <div id="blackSection" class="color-section" style="display:none">
+            <div class="color-section-header">
+                as black
+                <span class="color-meta" id="blackSubtitle"></span>
+            </div>
+            <ul id="blackRecs"></ul>
+        </div>
 
         <div class="footer">
             <p>
@@ -752,6 +779,85 @@
             return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name + ' chess opening');
         }
 
+        // ----- render a single recommendation card -----
+        function buildRecCard(rec, index) {
+            const od = openingsData && openingsData[rec.opening];
+
+            const rarityKey = (rec.rarity_label || 'unknown').toLowerCase().replace(' ', '-');
+            const rarityBadge = `<span class="rarity-badge rarity-${rarityKey}">${rec.rarity_label || 'unknown'}</span>`;
+
+            let boardHtml = '', movesHtml = '', ecoHtml = '';
+            if (od) {
+                ecoHtml = `<div class="eco-label">${od.eco}</div>`;
+                movesHtml = `<div class="moves-text">${od.pgn}</div>`;
+                try {
+                    const fenPlacement = pgnToFen(od.pgn);
+                    if (fenPlacement) boardHtml = renderBoard(fenPlacement);
+                } catch(e) {}
+            }
+
+            const n = rec.n_supporting || 1;
+            const nLabel = n === 1 ? '1 of your openings' : `${n} of your openings`;
+            const metaHtml = `
+                <div class="meta-row">
+                    <span class="meta-item">matched by <strong>${nLabel}</strong></span>
+                    <span class="meta-item"><strong>${rec.num_connections}</strong> network connections</span>
+                </div>`;
+
+            const linksHtml = `
+                <div class="outbound-links">
+                    <a href="${lichessOpeningUrl(rec.opening)}" target="_blank" class="outbound-link">explore on lichess ↗</a>
+                    <a href="${chessableUrl(rec.opening)}" target="_blank" class="outbound-link">courses on chessable ↗</a>
+                    <a href="${youtubeUrl(rec.opening)}" target="_blank" class="outbound-link">youtube ↗</a>
+                </div>`;
+
+            let relatedHtml = '';
+            if (rec.related_openings && rec.related_openings.length > 0) {
+                relatedHtml = `
+                    <div class="related-openings">
+                        <div class="related-title">similar in network</div>
+                        <div class="related-list">
+                            ${rec.related_openings.map(o => `<span class="related-tag">${o}</span>`).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            const explHtml = rec.explanation
+                ? `<div class="opening-explanation">${rec.explanation}</div>`
+                : '';
+
+            return $('<li>').addClass('recommendation-item').html(`
+                <div class="opening-header">
+                    <div class="opening-name">${index + 1}. ${rec.opening}</div>
+                    ${rarityBadge}
+                </div>
+                <div class="opening-body">
+                    ${boardHtml ? `<div class="board-container">${boardHtml}</div>` : ''}
+                    <div class="opening-info">
+                        ${ecoHtml}
+                        ${movesHtml}
+                        ${linksHtml}
+                        ${metaHtml}
+                    </div>
+                </div>
+                ${explHtml}
+                ${relatedHtml}
+            `);
+        }
+
+        function renderColorSection(sectionId, subtitleId, listId, colorData) {
+            if (!colorData || !colorData.recommendations || colorData.recommendations.length === 0) {
+                $(`#${sectionId}`).hide();
+                return;
+            }
+            const unique = colorData.unique_openings;
+            const games = colorData.games;
+            $(`#${subtitleId}`).text(`· ${games} games · ${unique} unique openings`);
+            const list = $(`#${listId}`).empty();
+            colorData.recommendations.forEach((rec, i) => list.append(buildRecCard(rec, i)));
+            $(`#${sectionId}`).show();
+        }
+
         // ----- form submission -----
         $(document).ready(function() {
             $('#userForm').on('submit', function(e) {
@@ -762,14 +868,13 @@
                 if (!username) return;
 
                 // Reset UI
-                $('#recommendations').empty();
-                $('#topExplanation').hide().text('');
+                $('#whiteRecs, #blackRecs').empty();
+                $('#whiteSection, #blackSection').hide();
                 $('#error').hide().text('');
                 $('#userStats').hide();
                 $('#loading').show();
                 $('#submitBtn').prop('disabled', true);
 
-                // Fetch recommendations and openings data in parallel
                 const recsPromise = $.ajax({
                     url: '/recommend',
                     type: 'POST',
@@ -786,101 +891,24 @@
                             return;
                         }
 
-                        // User stats
                         if (data.user_stats) {
                             const s = data.user_stats;
-                            $('#gamesAnalyzed').text(s.games_analyzed || '—');
-                            $('#uniqueOpenings').text(s.unique_openings || '—');
-                            $('#userRating').text(s.rating || 'unrated');
+                            $('#gamesAnalyzed').text(s.total_games || '—');
+                            $('#userRating').text(s.rating ? Math.round(s.rating) : 'unrated');
                             $('#repertoireStyle').text(s.repertoire_style || '—');
                             $('#userStats').show();
                         }
 
-                        if (data.top_result_explanation) {
-                            $('#topExplanation').text(data.top_result_explanation).show();
-                        }
+                        const hasWhite = data.white && data.white.recommendations && data.white.recommendations.length > 0;
+                        const hasBlack = data.black && data.black.recommendations && data.black.recommendations.length > 0;
 
-                        if (!data.recommendations || data.recommendations.length === 0) {
+                        if (!hasWhite && !hasBlack) {
                             $('#error').text('no recommendations available · try playing more games').show();
                             return;
                         }
 
-                        data.recommendations.forEach((rec, index) => {
-                            const od = openingsData && openingsData[rec.opening];
-
-                            // Rarity badge
-                            const rarityKey = (rec.rarity_label || 'unknown').toLowerCase().replace(' ', '-');
-                            const rarityBadge = `<span class="rarity-badge rarity-${rarityKey}">${rec.rarity_label || 'unknown'}</span>`;
-
-                            // Board
-                            let boardHtml = '';
-                            let movesHtml = '';
-                            let ecoHtml = '';
-                            if (od) {
-                                ecoHtml = `<div class="eco-label">${od.eco}</div>`;
-                                movesHtml = `<div class="moves-text">${od.pgn}</div>`;
-                                try {
-                                    const fenPlacement = pgnToFen(od.pgn);
-                                    if (fenPlacement) {
-                                        boardHtml = renderBoard(fenPlacement);
-                                    }
-                                } catch(e) {}
-                            }
-
-                            // Meta row
-                            const n = rec.n_supporting || 1;
-                            const nLabel = n === 1 ? '1 of your openings' : `${n} of your openings`;
-                            const metaHtml = `
-                                <div class="meta-row">
-                                    <span class="meta-item">matched by <strong>${nLabel}</strong></span>
-                                    <span class="meta-item"><strong>${rec.num_connections}</strong> network connections</span>
-                                </div>`;
-
-                            // Outbound links
-                            const linksHtml = `
-                                <div class="outbound-links">
-                                    <a href="${lichessOpeningUrl(rec.opening)}" target="_blank" class="outbound-link">explore on lichess ↗</a>
-                                    <a href="${chessableUrl(rec.opening)}" target="_blank" class="outbound-link">courses on chessable ↗</a>
-                                    <a href="${youtubeUrl(rec.opening)}" target="_blank" class="outbound-link">youtube ↗</a>
-                                </div>`;
-
-                            // Related openings
-                            let relatedHtml = '';
-                            if (rec.related_openings && rec.related_openings.length > 0) {
-                                relatedHtml = `
-                                    <div class="related-openings">
-                                        <div class="related-title">similar in network</div>
-                                        <div class="related-list">
-                                            ${rec.related_openings.map(o => `<span class="related-tag">${o}</span>`).join('')}
-                                        </div>
-                                    </div>`;
-                            }
-
-                            // Explanation
-                            const explHtml = rec.explanation
-                                ? `<div class="opening-explanation">${rec.explanation}</div>`
-                                : '';
-
-                            const item = $('<li>').addClass('recommendation-item').html(`
-                                <div class="opening-header">
-                                    <div class="opening-name">${index + 1}. ${rec.opening}</div>
-                                    ${rarityBadge}
-                                </div>
-                                <div class="opening-body">
-                                    ${boardHtml ? `<div class="board-container">${boardHtml}</div>` : ''}
-                                    <div class="opening-info">
-                                        ${ecoHtml}
-                                        ${movesHtml}
-                                        ${linksHtml}
-                                        ${metaHtml}
-                                    </div>
-                                </div>
-                                ${explHtml}
-                                ${relatedHtml}
-                            `);
-
-                            $('#recommendations').append(item);
-                        });
+                        renderColorSection('whiteSection', 'whiteSubtitle', 'whiteRecs', data.white);
+                        renderColorSection('blackSection', 'blackSubtitle', 'blackRecs', data.black);
                     })
                     .catch(xhr => {
                         $('#loading').hide();

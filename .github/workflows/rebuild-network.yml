@@ -1,0 +1,98 @@
+name: Rebuild opening network
+
+on:
+  # Run on the 3rd of each month (gives Lichess time to publish the previous month)
+  schedule:
+    - cron: "0 6 3 * *"
+  # Allow manual trigger with custom parameters
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Month to process (YYYY-MM). Defaults to previous month."
+        required: false
+        default: ""
+      max_games:
+        description: "Maximum games to stream"
+        required: false
+        default: "500000"
+      min_rating:
+        description: "Minimum player Elo"
+        required: false
+        default: "1500"
+      z_threshold:
+        description: "BiCM z-score threshold for edge retention"
+        required: false
+        default: "2.0"
+
+jobs:
+  rebuild:
+    name: Rebuild network (${{ inputs.month || 'auto' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-pipeline.txt
+
+      - name: Install pipeline dependencies
+        run: pip install -r requirements-pipeline.txt
+
+      - name: Compute target month
+        id: month
+        run: |
+          if [ -n "${{ inputs.month }}" ]; then
+            echo "value=${{ inputs.month }}" >> $GITHUB_OUTPUT
+          else
+            # Previous month (Lichess publishes ~2 weeks after month end)
+            echo "value=$(date -d 'last month' +'%Y-%m')" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run pipeline
+        run: |
+          python -m pipeline.run \
+            ${{ steps.month.outputs.value }} \
+            ${{ inputs.max_games || '500000' }} \
+            --min-rating ${{ inputs.min_rating || '1500' }} \
+            --z-threshold ${{ inputs.z_threshold || '2.0' }} \
+            --data-dir data
+
+      - name: Verify output
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          with open("data/network.json") as f:
+              d = json.load(f)
+          nodes = len(d["nodes"])
+          edges = len(d["edges"])
+          month = d["month"]
+          games = d["games_processed"]
+          print(f"Month: {month} | Games: {games:,} | Nodes: {nodes} | Edges: {edges}")
+          if nodes < 50:
+              print("ERROR: too few nodes — pipeline may have failed")
+              sys.exit(1)
+          if edges < 100:
+              print("ERROR: too few edges — z-threshold may be too high")
+              sys.exit(1)
+          EOF
+
+      - name: Commit and push network
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/network.json data/network_${{ steps.month.outputs.value }}.json
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "data: rebuild network for ${{ steps.month.outputs.value }}
+
+          $(python3 -c "
+          import json
+          with open('data/network.json') as f: d = json.load(f)
+          print(f\"Games: {d['games_processed']:,} | Nodes: {d['node_count']} | Edges: {d['edge_count']}\")
+          ")"
+          git push
