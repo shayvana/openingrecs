@@ -4,17 +4,18 @@
 # Install: pip install -r requirements-pipeline.txt
 
 # Streaming decompression of Lichess .pgn.zst dumps
-zstandard==0.22.0
+# 0.23+ has pre-built wheels for Python 3.13
+zstandard>=0.23.0
 
 # PGN parsing
-python-chess==1.999
+python-chess>=1.10.0
 
 # Bipartite Configuration Model (BiCM) z-score filtering
-bicm==3.1.1
+bicm>=3.1.1
 
 # Numerical computation (BiCM and EFC)
-numpy==1.26.2
-scipy==1.11.4
+numpy>=1.26.0
+scipy>=1.11.0
 
 # Progress display
-tqdm==4.66.1
+tqdm>=4.66.0
